@@ -3,12 +3,12 @@ import pdb
 from special_matrices import *
 from scipy.spatial.transform import Rotation as R
 
-class Rod1_3D(object):
-	"""docstring for Rod1_3D"""
-	def __init__(self, name, x1, y1,z1, x2, y2,z2, x_length, x_alpha, z_length, color=None, typ=None):
-		super(Rod1_3D, self).__init__()
+class PrismaticJoint(object):
+	"""docstring for PrismaticJoint"""
+	def __init__(self, name, x1, y1,z1, x2, y2,z2, q_angle, x_alpha, r_length, color=None, typ=None):
+		super(PrismaticJoint, self).__init__()
 		self.index = 0
-		self.type = 'RevoluteJoint'
+		self.type = 'PrismaticJoint'
 		self.name = name
 		self.lineX, self.lineY, self.lineZ = [x1,x2] , [y1,y2], [z1,z2]
 
@@ -21,29 +21,22 @@ class Rod1_3D(object):
 		self.z2_orignal = z2
 
 		# DH parameters
-		self.length = x_length # parameter r
+		self.q_angle = q_angle #theta parameter
 		self.x_alpha = x_alpha # alpha parameter
-		self.q = np.array([0]) #theta parameter
-		self.z_length = z_length  #z_length
+		self.r_length = r_length  #r_length
+		self.q = np.array([0]) # parameter z_length that varies
 
 
 		# default axis
 		self.x_axis = np.array([1,0,0])
 		self.y_axis = np.array([0,1,0])
 		self.z_axis = np.array([0,0,1])
-
-		axis_rotation_matrix = self.get_rotation_matrix()[0:3,0:3]
-		self.z_axis = axis_rotation_matrix @ self.z_axis
-		self.x_axis = axis_rotation_matrix @ self.x_axis
-		self.y_axis = np.cross(self.z_axis, self.x_axis)
-		
+	
 		self.isMovable = True
 		self.mass = 1.0
-	
 
 		self.Ic = np.zeros((3,3))
-		self.Ic[1,1] = (1/12) * self.mass * (self.length**2)
-		self.Ic[2,2] = (1/12) * self.mass * (self.length**2)
+		# no rotation component associated
 
 		self.showText = True
 		self.showCom = True
@@ -64,7 +57,7 @@ class Rod1_3D(object):
 
 	def get_rotation_matrix(self):
 		rotation_matrix = np.eye(4)
-		theta = self.q[0]
+		theta = self.q_angle
 		alpha = self.x_alpha
 
 		rotation_matrix[0,0] = np.cos(theta)
@@ -82,7 +75,7 @@ class Rod1_3D(object):
 
 	def get_rotation_matrix_derivative(self):
 		rotation_matrix = np.zeros((4,4))
-		theta = self.q[0]
+		theta = self.q_angle
 		alpha = self.x_alpha
 
 		rotation_matrix[0,0] = -np.sin(theta)
@@ -97,12 +90,11 @@ class Rod1_3D(object):
 		return rotation_matrix
 
 	def get_translation_matrix(self):
-		theta = self.q[0]
-		a = self.length
-		d = self.z_length
+		theta = self.q_angle
+		a = self.r_length
+		d = self.q[0]
 
 		translation_matrix = np.eye(4)
-
 		translation_matrix[0,3] = a * np.cos(theta)
 		translation_matrix[1,3] = a * np.sin(theta)
 		translation_matrix[2,3] = d
@@ -130,12 +122,6 @@ class Rod1_3D(object):
 		self.rotation = parent_rotation @ self.get_transformation_matrix()
 		self.lineX, self.lineY, self.lineZ = [x1_new, x2_new] , [y1_new, y2_new], [z1_new, z2_new]
 
-	def addChild(self, node):
-		self.child.append(node)
-		node.parent = self
-		self.rotation = np.eye(3)
-		node.parent_rotation = self.rotation
-
 	def set_xaxis(self, x_axis):
 		self.x_axis = x_axis
 
@@ -144,6 +130,12 @@ class Rod1_3D(object):
 
 	def set_zaxis(self, z_axis):
 		self.z_axis = z_axis
+
+	def addChild(self, node):
+		self.child.append(node)
+		node.parent = self
+		self.rotation = np.eye(3)
+
 
 	def getIndex(self):
 		return self.index

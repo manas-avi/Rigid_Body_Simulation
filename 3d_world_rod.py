@@ -2,6 +2,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 import numpy as np
 import Rod1_3D
+import PrismaticJoint
 import matplotlib.pyplot as plt
 import pdb
 from special_matrices import *
@@ -33,7 +34,6 @@ def evaluate_potential_energy(obj_list):
 		mi = obj_list[i].getMass()
 		rci = (O[i] + O[i-1]) / 2.0
 		P-= (np.transpose(g) @ rci ) * mi
-
 	return P
 
 def evaluate_potential_energy_derivative(obj_list):
@@ -46,12 +46,18 @@ def evaluate_potential_energy_derivative(obj_list):
 		matrix = matrix @ obj_list[i-1].get_transformation_matrix() 
 		O[i] = (matrix @ np.append([O[0]],1))[0:3]
 
-	for i in range(1,n+1):
-		mi = obj_list[i-1].getMass()
-		rci = (O[i] + O[i-1]) / 2.0
-		for k in range(1,i+1):
-			Zkm1 = obj_list[k-1].z_axis
-			phi[k-1] -= mi * (np.transpose(g) @np.cross( Zkm1 , (rci - O[k-1]) ))
+	for i in range(n):
+		mi = obj_list[i].getMass()
+		rci = (O[i] + O[i+1]) / 2.0
+		for k in range(i+1):
+			if k==0:
+				Zkm1 = np.array([0,0,1])
+			else:	
+				Zkm1 = obj_list[k-1].z_axis
+			if obj_list[i].type == 'PrismaticJoint':
+				phi[k] -= mi * (np.transpose(g) @ Zkm1)
+			elif obj_list[i].type == 'RevoluteJoint':				
+				phi[k] -= mi * (np.transpose(g) @ np.cross( Zkm1 , (rci - O[k]) ))
 	return phi
 
 def evaluate_Dq(obj_list):
@@ -73,8 +79,14 @@ def evaluate_Dq(obj_list):
 		Jvi = np.zeros((3,n))
 		Oci = (O[i+1] + O[i]) / 2 #assuming uniform centre of mass
 		for j in range(i+1):
-			Zjm1 = obj_list[j].z_axis
-			Jvi[:,j] = np.cross(Zjm1, (Oci - O[j]))
+			if j==0:
+				Zjm1 = np.array([0,0,1])
+			else:	
+				Zjm1 = obj_list[j-1].z_axis
+			if obj_list[i].type == 'PrismaticJoint':
+				Jvi[:,j] = Zjm1
+			elif obj_list[i].type == 'RevoluteJoint':
+				Jvi[:,j] = np.cross(Zjm1, (Oci - O[j]))
 		Dq += mi* (np.transpose(Jvi) @ Jvi)
 
 		# PE part -----------------
@@ -82,8 +94,15 @@ def evaluate_Dq(obj_list):
 		Ri = obj_list[i].get_rotation_matrix()[0:3,0:3]	
 		Jwi = np.zeros((3,n))
 		for j in range(i+1):
-			Jwi[:,j] = obj_list[j].z_axis
+			if obj_list[i].type == 'PrismaticJoint':
+				Jvi[:,j] = np.array([0,0,0], dtype=np.float32)
+			elif obj_list[i].type == 'RevoluteJoint':
+				if j==0:
+					Jwi[:,j] = np.array([0,0,1])
+				else:
+					Jwi[:,j] = obj_list[j-1].z_axis
 		Dq += np.transpose(Jwi) @ Ri @ Ii @ np.transpose(Ri) @ Jwi
+		# pdb.set_trace()
 	return Dq	
 
 
@@ -104,7 +123,10 @@ def evaluate_Dq_derivative(obj_list):
 
 	for k in range(n):
 		# here k represents qk element with which we are planning to differentiate
-		Zkm1 = obj_list[k].z_axis
+		if k==0:
+			Zkm1 = np.array([0,0,1])
+		else:	
+			Zkm1 = obj_list[k-1].z_axis
 		for obj_index in range(n):
 			# this loops for different object Jvi that contribute to the Dq nXn matrix
 
@@ -113,14 +135,21 @@ def evaluate_Dq_derivative(obj_list):
 			Jvidqk = np.zeros((3,n))
 			Oci = (O[obj_index+1] + O[obj_index]) / 2 #assuming uniform centre of mass
 			for j in range(obj_index+1):
-				Zjm1 = obj_list[j].z_axis
-				Jvi[:,j] = np.cross(Zjm1, (Oci - O[j]))
-				if k<j:
-					Jvidqk[:,j] = np.cross(Zjm1, np.cross(Zkm1, (Oci - O[j])) )
-				elif(k<obj_index+1):
-					Jvidqk[:,j] = np.cross(Zjm1, np.cross(Zkm1, (Oci - O[k])) )
-				else:
-					Jvidqk[:,j] = np.zeros((3))
+				if j==0:
+					Zjm1 = np.array([0,0,1])
+				else:	
+					Zjm1 = obj_list[j-1].z_axis
+				if obj_list[obj_index].type == 'PrismaticJoint':
+					Jvi[:,j] = Zjm1
+					# zero value for Jvidqk
+				elif obj_list[obj_index].type == 'RevoluteJoint':
+					Jvi[:,j] = np.cross(Zjm1, (Oci - O[j]))
+					if k<j:
+						Jvidqk[:,j] = np.cross(Zjm1, np.cross(Zkm1, (Oci - O[j])) )
+					elif(k<obj_index+1):
+						Jvidqk[:,j] = np.cross(Zjm1, np.cross(Zkm1, (Oci - O[k])) )
+					else:
+						Jvidqk[:,j] = np.zeros((3))
 
 			C[:,:,k] += mi * (np.transpose(Jvi) @ Jvidqk + np.transpose(Jvidqk) @ Jvi)
 			# Dq += mi* (np.transpose(Jvi) @ Jvi)
@@ -131,18 +160,20 @@ def evaluate_Dq_derivative(obj_list):
 			Rdi = obj_list[obj_index].get_rotation_matrix_derivative()[0:3,0:3]	
 			Jwi = np.zeros((3,n))
 			for j in range(obj_index+1):
-				Jwi[:,j] = obj_list[j].z_axis
-			
+				if j==0:
+					Jwi[:,j] = np.array([0,0,1])
+				else:
+					Jwi[:,j] = obj_list[j-1].z_axis
 			# when k==i then only Ri will contain term related to qk
-			if k==obj_index:
+			if k==obj_index and obj_list[obj_index].type == 'RevoluteJoint':
 				C[:,:,k] += (np.transpose(Jwi) @ Rdi @ Ii @ np.transpose(Ri) @ Jwi) + (np.transpose(Jwi) @ Ri @ Ii @ np.transpose(Rdi) @ Jwi)
-			# Dq += np.transpose(Jwi) @ Ri @ Ii @ np.transpose(Ri) @ Jwi
+
 
 	return C
 
 def createCArray(Dq_derivative, dqdt):
 	n = dqdt.shape[0]
-	C = np.zeros((n,1))
+	C = np.zeros((n,))
 	for k in range(n):
 		for i in range(n):
 			for j in range(n):
@@ -198,42 +229,86 @@ def fixed_point_method(torque, dt, obj_list):
 		d=np.transpose(diff) @ diff
 		itr+=1
 
-	# print(itr, d)
+	print(itr, d)
 	return d2qkp1
 
 
-g = np.array([0,-10,0])
 w = 0
 obj_0_dq = np.array([w])
 obj_1_dq = np.array([w])
 obj_2_dq = np.array([w])
 
-# x_alpha=0, z_length=0 means both the joint lies on the same plane and have
+# x_alpha=0, r_length=0 means both the joint lies on the same plane and have
 # same axis of rotation
+# some assumptions to remember - origin is always similar to cartessian system
+origin=np.array([4,4,0,1], dtype=np.float32)
+# remember position should be given such that parameter angle starting position == 0
+# obj_0 = Rod1_3D.Rod1_3D('obj_0', 4,4,0, 6,4,0, x_length=2, x_alpha=0,r_length=0, color="red")
 
-# obj is made as per the theta = 45'
-obj_0 = Rod1_3D.Rod1_3D('obj_0', 4,4,0, 6,4,0, x_alpha=0,z_length=0, color="red")
+# YZX system
+# pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,0, 4,4,0, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
+# pobj_0.showText = False
+
+# pobj_1 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,0, 4,4,0, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
+# pobj_1.showText = False
+# pobj_0.addChild(pobj_1)
+
+# pobj_2 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,0, 4,4,0, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
+# pobj_2.showText = False
+# pobj_1.addChild(pobj_2)
+
+# obj_0 = Rod1_3D.Rod1_3D('obj_0', 4,4,0, 6,4,0, x_length=2, x_alpha=0,z_length=0, color="black")
+obj_0 = Rod1_3D.Rod1_3D('obj_0', 4,4,0, 6,4,0, x_length=2, x_alpha=np.pi/2,z_length=0, color="black")
 obj_0.showText = False
 obj_0.setDq(obj_0_dq)
+# pobj_2.addChild(obj_0)
 
-obj_1 = Rod1_3D.Rod1_3D('obj_1', 6,4,0, 6,4,2, x_alpha=np.pi/4,z_length=0, color="blue")
+obj_1 = Rod1_3D.Rod1_3D('obj_1', 6,4,0, 8,4,0, x_length=2, x_alpha=0,z_length=0, color="blue")
+# # obj_1 = Rod1_3D.Rod1_3D('obj_1', 6,4,0, 8,4,0, x_length=2, x_alpha=0,z_length=0, color="blue")
 obj_1.showText = False
 obj_1.setDq(obj_1_dq)
 obj_0.addChild(obj_1)
 
-# obj_2 = Rod1_3D.Rod1_3D('obj_2', 8,4,0, 10,4,0, x_alpha=0,z_length=0, color="green")
+g = np.array([0,-10,0])
+# g = np.array([0,0,-10])
+# g = np.array([0,-10,0])
+# g = np.array([0,-10,-10])
+
+# obj_2 = Rod1_3D.Rod1_3D('obj_2', 8,4,0, 10,4,0,x_length=2, x_alpha=0,z_length=0, color="green")
 # obj_2.showText = False
 # obj_2.setDq(obj_2_dq)
 # obj_1.addChild(obj_2)
 
+# obj_list = [pobj_0]
+# obj_list = [pobj_0, pobj_1]
+# obj_list = [pobj_0, pobj_1, pobj_2]
+# obj_list = [pobj_0, pobj_1, pobj_2, obj_0]
 # obj_list = [obj_0]
 obj_list = [obj_0, obj_1]
-# obj_list = [obj_0, obj_1, obj_2]
 n = len(obj_list)
 
+# set Axis for all the joints ----
+# I have kept these axes as I want my initial axes to behave in this manner
+# Remember super important how you intialize your axes
+# axis_x, axis_y, axis_z = np.array([[1,0,0],[0,1,0],[0,0,1]])
+axis_x, axis_y, axis_z = np.array([[1,0,0],[0,1,0],[0,0,1]])
+for i in range(0,n):
+	matrix = obj_list[i].get_transformation_matrix()[0:3,0:3]
+	axis_x = matrix @ axis_x
+	axis_y = matrix @ axis_y
+	axis_z = matrix @ axis_z
+	obj_list[i].set_xaxis(axis_x)
+	obj_list[i].set_yaxis(axis_y)
+	obj_list[i].set_zaxis(axis_z)
+	print(axis_x)
+	print(axis_y)
+	print(axis_z)
+
 # torque = np.array([0], dtype=np.float32)
-torque = np.array([0, 0], dtype=np.float32)
-# torque = np.array([0,0, 0], dtype=np.float32)
+# torque = np.array([0, 0], dtype=np.float32)
+# torque = np.array([1, 1], dtype=np.float32)
+torque = np.zeros((n,))
+# torque = np.array([0,0, 0, 0,0], dtype=np.float32)
 
 # set indices 
 for i in range(n):
@@ -260,12 +335,14 @@ if __name__ == '__main__':
 		dqdt[i] = obj_list[i].getDq()
 		d2qdt2[i] = obj_list[i].getD2q()
 
-	# dqdt = np.array([0,1,1], dtype=np.float32)
-	# dqdt = np.array([-1,0], dtype=np.float32)
-	# dqdt = np.array([np.sqrt(20 - 5)], dtype=np.float32)
+	# dqdt = np.array([5], dtype=np.float32)
+	# dqdt = np.array([5,5], dtype=np.float32)
+	# dqdt = np.array([1,1,1,1], dtype=np.float32)
 
+	# t_list=[]
+	# e_list=[]
+	# q_list=[]
 	while True:
-
 		rhs = torque.copy()
 		ke = 0
 		Dq =  evaluate_Dq(obj_list)
@@ -301,15 +378,23 @@ if __name__ == '__main__':
 			obj.setDq(dqdt[i])
 			obj.setD2q(d2qdt2[i])
 
-			obj.update()
+			obj.update(origin)
 			if len(obj.child ) == 0:
 				continue
 			else:
 				for i in range(len(obj.child)):
 					links.append(obj.child[i])
+		# pdb.set_trace()
 		# print("t: ", np.array([t]), " q : ", q * 180 / np.pi % 360, "dqdt : " , dqdt, "d2qdt2 : ", d2qdt2, "rhs : ", rhs, "ke : ", np.array([ke]), "pe : ", np.array([pe]))
 		# print("t: ", np.array([t]), "d2qdt2 : ", d2qdt2)
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
+		print("t: ", np.array([t]), "Dq : ", Dq)
+		print("t: ", np.array([t]), "C : ", C)
+		print("t: ", np.array([t]), "Phi : ", phi)
+		print()
+		# t_list.append(t)
+		# e_list.append(ke+pe)
+		# q_list.append(q[0])
 
 		# render object
 		for artist in plt.gca().lines + plt.gca().collections + plt.gca().texts:
@@ -339,8 +424,15 @@ if __name__ == '__main__':
 		fig.canvas.draw()
 		fig.canvas.flush_events()
 
+		# if t>20:
+		# 	break
 
-
+# plt.title('energy graph')
+# plt.xlabel('time ---->')
+# plt.ylabel('energy ---->')
+# # plt.plot(t_list, e_list)
+# plt.plot(t_list, e_list)
+# plt.show()
 
 # Notes --------------------------------
 
