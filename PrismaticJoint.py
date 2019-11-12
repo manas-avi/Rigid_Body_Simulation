@@ -38,7 +38,7 @@ class PrismaticJoint(object):
 		self.Ic = np.zeros((3,3))
 		# no rotation component associated
 
-		self.showText = True
+		self.showText = False
 		self.showCom = True
 
 		self.dq = np.array([0])

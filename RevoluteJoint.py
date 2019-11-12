@@ -3,10 +3,10 @@ import pdb
 from special_matrices import *
 from scipy.spatial.transform import Rotation as R
 
-class Rod1_3D(object):
-	"""docstring for Rod1_3D"""
+class RevoluteJoint(object):
+	"""docstring for RevoluteJoint"""
 	def __init__(self, name, x1, y1,z1, x2, y2,z2, x_length, x_alpha, z_length, color=None, typ=None):
-		super(Rod1_3D, self).__init__()
+		super(RevoluteJoint, self).__init__()
 		self.index = 0
 		self.type = 'RevoluteJoint'
 		self.name = name
@@ -45,7 +45,7 @@ class Rod1_3D(object):
 		self.Ic[1,1] = (1/12) * self.mass * (self.length**2)
 		self.Ic[2,2] = (1/12) * self.mass * (self.length**2)
 
-		self.showText = True
+		self.showText = False
 		self.showCom = True
 
 		self.dq = np.array([0])

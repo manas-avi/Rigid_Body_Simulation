@@ -75,4 +75,4 @@ def getVector3X(vector4X):
 	return np.array([vector4X[0], vector4X[1], vector4X[2]]) / vector4X[3]
 
 def runge_kutta_method(v, vdot, dt):
-	pass
+	pass	

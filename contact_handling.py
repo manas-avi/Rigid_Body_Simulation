@@ -2,7 +2,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import patches
 from matplotlib.collections import PatchCollection
 import numpy as np
-import RevoluteJoint
+import Rod1_3D
 import PrismaticJoint
 import matplotlib.pyplot as plt
 import pdb
@@ -30,7 +30,6 @@ def evaluate_potential_energy(obj_list):
 	for i in range(1,n+1):
 		matrix = matrix @ obj_list[i-1].get_transformation_matrix() 
 		O[i] = (matrix @ np.append([O[0]],1))[0:3]
-		
 
 	for i in range(n):
 		mi = obj_list[i].getMass()
@@ -243,8 +242,8 @@ def detectCollision(obj):
 	else:
 		return False
 
-# g = np.array([0,0,-10])
 g = np.array([0,0,-10])
+# g = np.array([0,0,-10])
 # same axis of rotation
 origin=np.array([4,4,1,1], dtype=np.float32)
 
@@ -252,17 +251,16 @@ origin=np.array([4,4,1,1], dtype=np.float32)
 # pobj_0.addChild(pobj_1)
 
 
-pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,0, 4,4,0, 	q_angle=0, x_alpha=0,r_length=0, color="red")
-# pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,0, 4,4,0, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
-# pobj_1 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,0, 4,4,0, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
-# pobj_2 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,0, 4,4,0, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
+pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,0, 4,4,0, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
+pobj_1 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,0, 4,4,0, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
+pobj_2 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,0, 4,4,0, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
 
-# obj_0 = RevoluteJoint.RevoluteJoint('obj_0', 4,4,1, 4,4,1, x_length=0, x_alpha=np.pi/2,z_length=0, color="red")
+# obj_0 = Rod1_3D.Rod1_3D('obj_0', 4,4,1, 4,4,1, x_length=0, x_alpha=np.pi/2,z_length=0, color="red")
 
-obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=0,z_length=0, color="blue")
+obj_1 = Rod1_3D.Rod1_3D('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=0,z_length=0, color="blue")
 pobj_0.addChild(obj_1)
 
-obj_2 = RevoluteJoint.RevoluteJoint('obj_2', 6,4,1, 8,4,1, x_length=2, x_alpha=0,z_length=0, color="green")
+obj_2 = Rod1_3D.Rod1_3D('obj_2', 6,4,1, 8,4,1, x_length=2, x_alpha=0,z_length=0, color="green")
 obj_1.addChild(obj_2)
 
 
@@ -297,7 +295,7 @@ for i in range(n):
 
 
 if __name__ == '__main__':
-	dt = 0.001
+	dt = 0.01
 	q = np.zeros((n))
 	dqdt = np.zeros((n))
 	d2qdt2 = np.zeros((n))
@@ -372,13 +370,12 @@ if __name__ == '__main__':
 					links.append(obj.child[i])
 		# pdb.set_trace()
 		# print("t: ", np.array([t]), " q : ", q * 180 / np.pi % 360, "dqdt : " , dqdt, "d2qdt2 : ", d2qdt2, "rhs : ", rhs, "ke : ", np.array([ke]), "pe : ", np.array([pe]))
-		# print("t: ", np.array([t]), "d2qdt2 : ", d2qdt2)
-		print("t: ", np.array([t]), "ke : ", np.array([ke]))
-		print("t: ", np.array([t]), "pe : ", np.array([pe]))
-		# print("t: ", np.array([t]), "Dq : ", Dq)
-		# print("t: ", np.array([t]), "C : ", C)
-		# print("t: ", np.array([t]), "Phi : ", phi)
-		# print()
+		print("t: ", np.array([t]), "d2qdt2 : ", d2qdt2)
+		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
+		print("t: ", np.array([t]), "Dq : ", Dq)
+		print("t: ", np.array([t]), "C : ", C)
+		print("t: ", np.array([t]), "Phi : ", phi)
+		print()
 		# t_list.append(t)
 		# e_list.append(ke+pe)
 		# q_list.append(q[0])
