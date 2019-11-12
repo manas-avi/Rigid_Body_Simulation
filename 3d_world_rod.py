@@ -30,11 +30,14 @@ def evaluate_potential_energy(obj_list):
 	for i in range(1,n+1):
 		matrix = matrix @ obj_list[i-1].get_transformation_matrix() 
 		O[i] = (matrix @ np.append([O[0]],1))[0:3]
-		
+
 
 	for i in range(n):
 		mi = obj_list[i].getMass()
-		rci = (O[i] + O[i-1]) / 2.0
+		if obj_list[i].type == 'PrismaticJoint':
+			rci = O[i+1]
+		elif obj_list[i].type == 'RevoluteJoint':
+			rci = (O[i] + O[i+1]) / 2.0
 		P-= (np.transpose(g) @ rci ) * mi
 	return P
 
@@ -243,8 +246,9 @@ def detectCollision(obj):
 	else:
 		return False
 
-# g = np.array([0,0,-10])
 g = np.array([0,0,-10])
+# g = np.array([0,-10,0])
+# g = np.array([-10,0,0])
 # same axis of rotation
 origin=np.array([4,4,1,1], dtype=np.float32)
 
@@ -252,10 +256,10 @@ origin=np.array([4,4,1,1], dtype=np.float32)
 # pobj_0.addChild(pobj_1)
 
 
-pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,0, 4,4,0, 	q_angle=0, x_alpha=0,r_length=0, color="red")
-# pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,0, 4,4,0, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
-# pobj_1 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,0, 4,4,0, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
-# pobj_2 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,0, 4,4,0, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
+pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,1, 4,4,1, 	q_angle=0, x_alpha=np.pi/2,r_length=0, color="red")
+# pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
+# pobj_1 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
+# pobj_2 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
 
 # obj_0 = RevoluteJoint.RevoluteJoint('obj_0', 4,4,1, 4,4,1, x_length=0, x_alpha=np.pi/2,z_length=0, color="red")
 
@@ -267,8 +271,10 @@ obj_1.addChild(obj_2)
 
 
 # ground is the x-y plane
-obj_list = [pobj_0, obj_1]
-# obj_list = [pobj_0, obj_1, obj_2]
+# obj_list = [pobj_0]
+# obj_list = [pobj_0, obj_1]
+obj_list = [pobj_0, obj_1, obj_2]
+# obj_list = [obj_1, obj_2]
 n = len(obj_list)
 
 # set Axis for all the joints ----
@@ -297,7 +303,7 @@ for i in range(n):
 
 
 if __name__ == '__main__':
-	dt = 0.001
+	dt = 0.01
 	q = np.zeros((n))
 	dqdt = np.zeros((n))
 	d2qdt2 = np.zeros((n))
@@ -348,9 +354,12 @@ if __name__ == '__main__':
 			# resolve collisions
 
 
+		# print(d2qdt2)
 		dqdt += d2qdt2*dt
 		q += dqdt*dt
 		t += dt
+
+		# pdb.set_trace()
 
 		obj = obj_list[0]
 		links = [obj]
@@ -371,10 +380,9 @@ if __name__ == '__main__':
 				for i in range(len(obj.child)):
 					links.append(obj.child[i])
 		# pdb.set_trace()
-		# print("t: ", np.array([t]), " q : ", q * 180 / np.pi % 360, "dqdt : " , dqdt, "d2qdt2 : ", d2qdt2, "rhs : ", rhs, "ke : ", np.array([ke]), "pe : ", np.array([pe]))
+		# print("t: ", np.array([t]), " q : ", q, "dqdt : " , dqdt, "d2qdt2 : ", d2qdt2, "rhs : ", rhs, "ke : ", np.array([ke]), "pe : ", np.array([pe]))
 		# print("t: ", np.array([t]), "d2qdt2 : ", d2qdt2)
-		print("t: ", np.array([t]), "ke : ", np.array([ke]))
-		print("t: ", np.array([t]), "pe : ", np.array([pe]))
+		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
 		# print("t: ", np.array([t]), "Dq : ", Dq)
 		# print("t: ", np.array([t]), "C : ", C)
 		# print("t: ", np.array([t]), "Phi : ", phi)
