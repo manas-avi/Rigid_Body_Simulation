@@ -133,7 +133,7 @@ class RevoluteJoint(object):
 	def addChild(self, node):
 		self.child.append(node)
 		node.parent = self
-		self.rotation = np.eye(3)
+		self.rotation = np.eye(4)
 		node.parent_rotation = self.rotation
 
 	def set_xaxis(self, x_axis):

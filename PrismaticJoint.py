@@ -75,18 +75,6 @@ class PrismaticJoint(object):
 
 	def get_rotation_matrix_derivative(self):
 		rotation_matrix = np.zeros((4,4))
-		theta = self.q_angle
-		alpha = self.x_alpha
-
-		rotation_matrix[0,0] = -np.sin(theta)
-		rotation_matrix[1,0] = np.cos(theta)
-
-		rotation_matrix[0,1] = -np.cos(theta) * np.cos(alpha)
-		rotation_matrix[1,1] =  -np.sin(theta) * np.cos(alpha)
-
-		rotation_matrix[0,2] =  np.cos(theta) * np.sin(alpha)
-		rotation_matrix[1,2] =  np.sin(theta) * np.sin(alpha)
-
 		return rotation_matrix
 
 	def get_translation_matrix(self):
@@ -134,7 +122,7 @@ class PrismaticJoint(object):
 	def addChild(self, node):
 		self.child.append(node)
 		node.parent = self
-		self.rotation = np.eye(3)
+		self.rotation = np.eye(4)
 
 
 	def getIndex(self):
