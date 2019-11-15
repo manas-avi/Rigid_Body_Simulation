@@ -300,11 +300,11 @@ def detectCollision(obj):
 	else:
 		return False
 
-# g = np.array([0,0,-10])
+g = np.array([0,0,-10])
 # g = np.array([0,-10,0])
 # g = np.array([-10,0,0])
 # g = np.array([-1,-1,-1])
-g = np.array([0,0,0])
+# g = np.array([0,0,0])
 # same axis of rotation
 origin=np.array([4,4,1,1], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
@@ -312,29 +312,41 @@ origin=np.array([4,4,1,1], dtype=np.float32)
 # pobj_0.addChild(pobj_1)
 
 
+# pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
+# pobj_0.setMass(1e-10)
+# pobj_1 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
+# pobj_1.setMass(1e-10)
+# pobj_2 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
+# pobj_2.setMass(1e-10)
+# pobj_0.addChild(pobj_1)
+# pobj_1.addChild(pobj_2)
+
 pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
 pobj_0.setMass(0)
-pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
+# pobj_0.showText = True
+pobj_1 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
 pobj_1.setMass(0)
-pobj_2 = PrismaticJoint.PrismaticJoint('pobj_2', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
-pobj_2.setMass(0)
-pobj_0.addChild(pobj_1)
-pobj_1.addChild(pobj_2)
+# pobj_1.showText = True
+# pobj_1.setMass(1e-10)
 
 obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=0,z_length=0, color="pink")
-# obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=np.pi/2,z_length=0, color="violet")
+# obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=0,z_length=0, color="violet")
 obj_1.showText = True
-pobj_2.addChild(obj_1)
+pobj_0.addChild(pobj_1)
+pobj_1.addChild(obj_1)
+# pobj_2.addChild(obj_1)
 
-obj_2 = RevoluteJoint.RevoluteJoint('obj_2', 6,4,1, 8,4,1, x_length=2, x_alpha=0,z_length=0, color="cyan")
-obj_2.showText = True
-obj_1.addChild(obj_2)
+# obj_2 = RevoluteJoint.RevoluteJoint('obj_2', 6,4,1, 8,4,1, x_length=2, x_alpha=0,z_length=0, color="cyan")
+# obj_2.showText = True
+# obj_1.addChild(obj_2)
 
 
 # ground is the x-y plane
 # obj_list = [pobj_0]
+obj_list = [pobj_0, pobj_1, obj_1]
+# obj_list = [pobj_0, pobj_1, pobj_2]
 # obj_list = [pobj_0,pobj_1,pobj_2, obj_1]
-obj_list = [pobj_0,pobj_1,pobj_2, obj_1, obj_2]
+# obj_list = [pobj_0,pobj_1,pobj_2, obj_1, obj_2]
 # obj_list = [obj_1, obj_2]
 n = len(obj_list)
 
@@ -386,10 +398,9 @@ if __name__ == '__main__':
 	# dqdt = np.array([5], dtype=np.float32)
 	# dqdt = np.array([10,1], dtype=np.float32)
 	# dqdt = np.array([0,0,2], dtype=np.float32)
-	# dqdt = np.array([0,-2,2], dtype=np.float32)
-	# dqdt = np.array([0,0,-2,2], dtype=np.float32)
-	# dqdt = np.array([0,0,0,2], dtype=np.float32)
-	dqdt = np.array([0,0,1,-1,2], dtype=np.float32)
+	dqdt = np.array([0,-2,2], dtype=np.float32)
+	# dqdt = np.array([0,0,0,1], dtype=np.float32)
+	# dqdt = np.array([0,0,0,1,0], dtype=np.float32)
 
 	# t_list=[]
 	# e_list=[]
@@ -416,6 +427,9 @@ if __name__ == '__main__':
 			rhs[k] = rhs[k] - phi[k] - C[k]
 
 		d2qdt2 = np.linalg.solve(Dq, rhs)
+		# d2qdt2[0] = 0
+		# d2qdt2[1] = 0
+		# d2qdt2[2] = 0
 		# d2qdt2 = fixed_point_method(torque, dt, obj_list)
 
 			# # detect collisions - 
@@ -464,18 +478,18 @@ if __name__ == '__main__':
 					links.append(obj.child[i])
 		# pdb.set_trace()
 		# print("t: ", np.array([t]), " q : ", q, "dqdt : " , dqdt, "d2qdt2 : ", d2qdt2, "rhs : ", rhs, "ke : ", np.array([ke]), "pe : ", np.array([pe]))
-		# print("t: ", np.array([t]), "d2qdt2 : ", d2qdt2)
-		# print("t: ", np.array([t]), "dqdt : ", dqdt)
-		# print("t: ", np.array([t]), "q : ", q)
-		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
-		print("t: ", np.array([t]), "Angular momentum : ", '\n',  Dq@dqdt, np.sum(Dq@dqdt))
+		print("t: ", np.array([t]), "q : ", q)
+		print("t: ", np.array([t]), "dqdt : ", dqdt)
+		print("t: ", np.array([t]), "d2qdt2 : ", d2qdt2)
+		print()
+		# print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
+		# print("t: ", np.array([t]), "Angular momentum : ", '\n',  Dq@dqdt, np.sum(Dq@dqdt))
 		# print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
-		# print("t: ", np.array([t]), "C : ", C)	
+		# print("t: ", np.array([t]), "C : ", C)
 		# print("t: ", np.array([t]), "Phi : ", phi)
 		# print("t: ", np.array([t]), "rhs : ", rhs)
-		print()
-
-		# debug statemetns
+		# print()
+		# pdb.set_trace()
 		# t_list.append(t)
 		# q1_list.append(q[0])
 		# q2_list.append(q[1])
