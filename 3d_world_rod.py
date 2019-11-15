@@ -300,7 +300,7 @@ def detectCollision(obj):
 	else:
 		return False
 
-# g = np.array([0,0,-10])
+g = np.array([0,0,-10])
 # g = np.array([0,-10,0])
 # g = np.array([-10,0,0])
 # g = np.array([-1,-1,-1])
@@ -321,8 +321,8 @@ pobj_2.setMass(0)
 pobj_0.addChild(pobj_1)
 pobj_1.addChild(pobj_2)
 
-obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=0,z_length=0, color="pink")
-# obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=np.pi/2,z_length=0, color="violet")
+# obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=0,z_length=0, color="pink")
+obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=np.pi/2,z_length=0, color="violet")
 obj_1.showText = True
 pobj_2.addChild(obj_1)
 
@@ -383,13 +383,12 @@ if __name__ == '__main__':
 		dqdt[i] = obj_list[i].getDq()
 		d2qdt2[i] = obj_list[i].getD2q()
 
-	# dqdt = np.array([5], dtype=np.float32)
-	# dqdt = np.array([10,1], dtype=np.float32)
-	# dqdt = np.array([0,0,2], dtype=np.float32)
 	# dqdt = np.array([0,-2,2], dtype=np.float32)
 	# dqdt = np.array([0,0,-2,2], dtype=np.float32)
 	# dqdt = np.array([0,0,0,2], dtype=np.float32)
-	dqdt = np.array([0,0,1,-1,2], dtype=np.float32)
+	# dqdt = np.array([0,0,-4,2,0], dtype=np.float32)
+	dqdt = np.array([0,0,-4,2,3], dtype=np.float32)
+	# dqdt = np.array([-1/3,0,0,0,1], dtype=np.float32)
 
 	# t_list=[]
 	# e_list=[]
@@ -428,8 +427,8 @@ if __name__ == '__main__':
 		# 	d2qdt2[1] = 0
 			# d2qdt2[1] = -dz*50
 
-		dqdt += d2qdt2*dt
 		q += dqdt*dt
+		dqdt += d2qdt2*dt
 		t += dt
 
 		obj = obj_list[0]
@@ -464,9 +463,9 @@ if __name__ == '__main__':
 					links.append(obj.child[i])
 		# pdb.set_trace()
 		# print("t: ", np.array([t]), " q : ", q, "dqdt : " , dqdt, "d2qdt2 : ", d2qdt2, "rhs : ", rhs, "ke : ", np.array([ke]), "pe : ", np.array([pe]))
-		# print("t: ", np.array([t]), "d2qdt2 : ", d2qdt2)
-		# print("t: ", np.array([t]), "dqdt : ", dqdt)
-		# print("t: ", np.array([t]), "q : ", q)
+		print("t: ", np.array([t]), "d2qdt2 : ", d2qdt2)
+		print("t: ", np.array([t]), "dqdt : ", dqdt)
+		print("t: ", np.array([t]), "q : ", q)
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
 		print("t: ", np.array([t]), "Angular momentum : ", '\n',  Dq@dqdt, np.sum(Dq@dqdt))
 		# print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
