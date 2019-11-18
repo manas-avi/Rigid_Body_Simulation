@@ -323,7 +323,7 @@ pobj_0.addChild(pobj_1)
 
 obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=0,z_length=0, color="pink")
 # obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=np.pi/2,z_length=0, color="violet")
-obj_1.showText = True
+# obj_1.showText = True
 pobj_1.addChild(obj_1)
 
 # obj_2 = RevoluteJoint.RevoluteJoint('obj_2', 6,4,1, 8,4,1, x_length=2, x_alpha=0,z_length=0, color="cyan")
@@ -386,7 +386,7 @@ if __name__ == '__main__':
 
 	# dqdt = np.array([0,-2,2], dtype=np.float32)
 	# dqdt = np.array([0,0,-2,2], dtype=np.float32)
-	dqdt = np.array([0,0,2], dtype=np.float32)
+	dqdt = np.array([0,0,10], dtype=np.float32)
 	# dqdt = np.array([0,0,-4,2,0], dtype=np.float32)
 	# dqdt = np.array([0,0,-4,2,3], dtype=np.float32)
 	# dqdt = np.array([-1/3,0,0,0,1], dtype=np.float32)
@@ -414,30 +414,47 @@ if __name__ == '__main__':
 
 
 		# Assuming Dq, C are constant as velocity and position cannot change instantaneously
-		K = np.zeros((2,2))
-		init_acc = np.zeros((2,))
-		for i in range(2): # for second dof
+		K = np.zeros((n,n))
+		coef_rest = 0.1
+		init_acc = np.zeros((n,))
+		for i in range(n): # for second dof
 			g_i = 1  # force/torque at ith joint
 			test_force = rhs.copy()
 			test_force[i] += g_i
 			d2qdt2_test = np.linalg.solve(Dq, test_force)
-			init_acc[i] = -d2qdt2[i]
+			if not i==2:
+				init_acc[i] = -d2qdt2[i]
+			else:
+				obj = obj_list[i]
+				if(detectCollision(obj)):
+					# print("Collision")
+					final_vel = -coef_rest * obj.getDq()
+					init_vel = obj_list[i].getDq()
+					final_acc = (final_vel - init_vel)/dt
+					init_acc[i] = final_acc - d2qdt2[i]
+				else:
+					init_acc[i] = 0	
 			# apply this g_i force to calculate kij's
-			for j in range(2):
+			for j in range(n):
 				q_t = d2qdt2_test[j]
 				q_0 = d2qdt2[j]
 				k_ij = (q_t - q_0) / g_i
 				K[i,j] = k_ij
 		f = np.linalg.inv(K) @ init_acc
 		new_rhs = rhs.copy()
-		new_rhs[0:2] += f
+		new_rhs[0:n] += f
 		d2qdt2 = np.linalg.solve(Dq, new_rhs)
-		print("d2qdt2 : ", d2qdt2)
 		# to constraint the root joint to have zero acceleration
 
-			# # detect collisions - 
-		# if(detectCollision(obj_list[1])):
-		# 	print('Collision')
+		# detect collisions - 
+		# for obj in obj_list:
+		# 	if(detectCollision(obj)):
+		# 		print('Collision')
+		# 		obj.Dq_flag = False
+		# 		obj_vel = dqdt[obj.index]
+		# 		dqdt[obj.index] = - 0.5 * obj_vel
+		# 		# obj.setDq(-obj_vel)
+		# 		obj.setD2q(0)
 		# 	# pdb.set_trace()
 		# 	obj = obj_list[1]
 		# 	dz = obj.lineZ[1]
@@ -458,8 +475,11 @@ if __name__ == '__main__':
 			links.remove(links[0])
 			i= obj.getIndex()
 			obj.setQ(q[i])
-			obj.setDq(dqdt[i])
-			obj.setD2q(d2qdt2[i])	
+			if obj.Dq_flag:
+				obj.setDq(dqdt[i])
+				obj.setD2q(d2qdt2[i])	
+			else:
+				obj.Dq_flag = True
 
 			obj.update(origin)
 
