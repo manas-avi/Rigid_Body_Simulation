@@ -300,11 +300,11 @@ def detectCollision(obj):
 	else:
 		return False
 
-g = np.array([0,0,-10])
+# g = np.array([0,0,-10])
 # g = np.array([0,-10,0])
 # g = np.array([-10,0,0])
 # g = np.array([-1,-1,-1])
-# g = np.array([0,0,0])
+g = np.array([0,0,0])
 # same axis of rotation
 origin=np.array([4,4,1,1], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
@@ -312,30 +312,30 @@ origin=np.array([4,4,1,1], dtype=np.float32)
 # pobj_0.addChild(pobj_1)
 
 
-pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
-pobj_0.setMass(0)
-pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
-pobj_1.setMass(0)
+# pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
+# pobj_0.setMass(0)
+# pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
+# pobj_1.setMass(0)
 # pobj_2 = PrismaticJoint.PrismaticJoint('pobj_2', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
 # pobj_2.setMass(0)
-pobj_0.addChild(pobj_1)
+# pobj_0.addChild(pobj_1)
 # pobj_1.addChild(pobj_2)
 
-obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=0,z_length=0, color="pink")
-# obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=np.pi/2,z_length=0, color="violet")
-# obj_1.showText = True
-pobj_1.addChild(obj_1)
+# obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=0,z_length=0, color="pink")
+obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=np.pi/2,z_length=0, color="violet")
+obj_1.showText = True
+# pobj_1.addChild(obj_1)
 
-# obj_2 = RevoluteJoint.RevoluteJoint('obj_2', 6,4,1, 8,4,1, x_length=2, x_alpha=0,z_length=0, color="cyan")
+obj_2 = RevoluteJoint.RevoluteJoint('obj_2', 6,4,1, 8,4,1, x_length=2, x_alpha=0,z_length=0, color="cyan")
 # obj_2.showText = True
-# obj_1.addChild(obj_2)
+obj_1.addChild(obj_2)
 
 
 # ground is the x-y plane
 # obj_list = [pobj_0]
-obj_list = [pobj_0,pobj_1, obj_1]
+# obj_list = [pobj_0,pobj_1, obj_1]
 # obj_list = [pobj_0,pobj_1,pobj_2, obj_1, obj_2]
-# obj_list = [obj_1, obj_2]
+obj_list = [obj_1, obj_2]
 n = len(obj_list)
 
 # set Axis for all the joints ----
@@ -386,11 +386,11 @@ if __name__ == '__main__':
 
 	# dqdt = np.array([0,-2,2], dtype=np.float32)
 	# dqdt = np.array([0,0,-2,2], dtype=np.float32)
-	dqdt = np.array([0,0,10], dtype=np.float32)
+	# dqdt = np.array([0,0,10], dtype=np.float32)
 	# dqdt = np.array([0,0,-4,2,0], dtype=np.float32)
 	# dqdt = np.array([0,0,-4,2,3], dtype=np.float32)
 	# dqdt = np.array([-1/3,0,0,0,1], dtype=np.float32)
-	# dqdt = np.array([0,0,0,0,0], dtype=np.float32)
+	dqdt = np.array([0,-2], dtype=np.float32)
 
 	# t_list=[]
 	# e_list=[]
@@ -421,17 +421,19 @@ if __name__ == '__main__':
 			g_i = 1  # force/torque at ith joint
 			test_force = rhs.copy()
 			test_force[i] += g_i
-			d2qdt2_test = np.linalg.solve(Dq, test_force)
-			if not i==2:
-				init_acc[i] = -d2qdt2[i]
+			d2qdt2_test = np.linalg.solve(Dq, test_force)		
+
+			obj = obj_list[i]
+			if(detectCollision(obj)):
+				print("Collision")
+				final_vel = -coef_rest * obj.getDq()
+				init_vel = obj_list[i].getDq()
+				final_acc = (final_vel - init_vel)/dt
+				init_acc[i] = final_acc - d2qdt2[i]
 			else:
-				obj = obj_list[i]
-				if(detectCollision(obj)):
-					# print("Collision")
-					final_vel = -coef_rest * obj.getDq()
-					init_vel = obj_list[i].getDq()
-					final_acc = (final_vel - init_vel)/dt
-					init_acc[i] = final_acc - d2qdt2[i]
+				# TODO AVOID HARD CODING
+				if not i==1:
+					init_acc[i] = -d2qdt2[i] # to enforce steady constraints
 				else:
 					init_acc[i] = 0	
 			# apply this g_i force to calculate kij's
