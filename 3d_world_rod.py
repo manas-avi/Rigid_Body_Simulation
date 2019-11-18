@@ -300,11 +300,11 @@ def detectCollision(obj):
 	else:
 		return False
 
-# g = np.array([0,0,-10])
+g = np.array([0,0,-10])
 # g = np.array([0,-10,0])
 # g = np.array([-10,0,0])
 # g = np.array([-1,-1,-1])
-g = np.array([0,0,0])
+# g = np.array([0,0,0])
 # same axis of rotation
 origin=np.array([4,4,1,1], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
@@ -413,25 +413,27 @@ if __name__ == '__main__':
 		d2qdt2 = np.linalg.solve(Dq, rhs)
 
 
-		for i in range(1): # for first dof
-		# for i in range(1,2): # for second dof
-			g_t = 1
+		# Assuming Dq, C are constant as velocity and position cannot change instantaneously
+		K = np.zeros((2,2))
+		init_acc = np.zeros((2,))
+		for i in range(2): # for second dof
+			g_i = 1  # force/torque at ith joint
 			test_force = rhs.copy()
-			test_force[i] += g_t
-			# Assuming Dq, C are constant as velocity and position cannot change instantaneously
+			test_force[i] += g_i
 			d2qdt2_test = np.linalg.solve(Dq, test_force)
-			q_t = d2qdt2_test[i]
-			q_0 = d2qdt2[i]
-			k_0 = (q_t - q_0) / g_t
-			new_test_force = - q_0 / k_0
-			test_force_new = rhs.copy()
-			test_force_new[i] += new_test_force
-			d2qdt2_test1 = np.linalg.solve(Dq, test_force_new)
-			print(d2qdt2_test1)
-			new_rhs[i] += new_test_force
+			init_acc[i] = -d2qdt2[i]
+			# apply this g_i force to calculate kij's
+			for j in range(2):
+				q_t = d2qdt2_test[j]
+				q_0 = d2qdt2[j]
+				k_ij = (q_t - q_0) / g_i
+				K[i,j] = k_ij
+		f = np.linalg.inv(K) @ init_acc
+		new_rhs = rhs.copy()
+		new_rhs[0:2] += f
 		d2qdt2 = np.linalg.solve(Dq, new_rhs)
 		print("d2qdt2 : ", d2qdt2)
-		# d2qdt2 = fixed_point_method(torque, dt, obj_list)
+		# to constraint the root joint to have zero acceleration
 
 			# # detect collisions - 
 		# if(detectCollision(obj_list[1])):
@@ -482,7 +484,7 @@ if __name__ == '__main__':
 		# print("t: ", np.array([t]), "d2qdt2 : ", d2qdt2)
 		# print("t: ", np.array([t]), "dqdt : ", dqdt)
 		# print("t: ", np.array([t]), "q : ", q)
-		# print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
+		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
 		# print("t: ", np.array([t]), "Angular momentum : ", '\n',  Dq@dqdt, np.sum(Dq@dqdt))
 		# # print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
 		# # print("t: ", np.array([t]), "C : ", C)	
