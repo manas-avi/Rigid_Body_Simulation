@@ -80,32 +80,6 @@ def evaluate_potential_energy_derivative(obj_list):
 				phi[k] -= mi * (np.transpose(g) @ np.cross( Zkm1 , (rci - O[k]) ))
 	return phi
 
-def evaluateJacobian(obj_list, index):
-	# index is the end point of obj_list[index] at which we are computing the jacobian
-
-	# store Oi values for all the link
-	n=len(obj_list)
-	O = np.zeros((n+1,3))
-	matrix = np.eye(4)
-	for i in range(1,n+1):
-		matrix = matrix @ obj_list[i-1].get_transformation_matrix() 
-		O[i] = (matrix @ np.append([O[0]],1))[0:3]
-
-	i = index
-	mi = obj_list[i].getMass()
-	Jvi = np.zeros((3,n))
-	Oci = (O[i+1] + O[i]) / 2 #assuming uniform centre of mass
-	for j in range(i+1):
-		if j==0:
-			Zjm1 = np.array([0,0,1])
-		else:	
-			Zjm1 = obj_list[j-1].z_axis
-		if obj_list[j].type == 'PrismaticJoint':
-			Jvi[:,j] = Zjm1
-		elif obj_list[j].type == 'RevoluteJoint':
-			Jvi[:,j] = np.cross(Zjm1, (Oci - O[j]))
-	return Jvi
-
 def evaluate_Dq(obj_list):
 	# this function is coorect as per unit test for 2 rods
 	n = len(obj_list)
@@ -316,145 +290,52 @@ def fixed_point_method(torque, dt, obj_list):
 	print(itr, d)
 	return d2qkp1
 
-def calculate_joint_effector_velocities(obj_list):
-	v_list = []
-	n = len(obj_list)
-	for i in range(n):
-		obj = obj_list[i]
-		if i==0:
-			z_axis = np.array([0,0,1])
-		else:
-			z_axis = obj_list[i-1].z_axis
-
-		if obj.type == 'PrismaticJoint':
-			vel = z_axis * obj.getDq()
-			if not i==0:
-				vel = v_list[-1] + vel
-			v_list.append(vel)
-		else:
-			w = obj.getDq()
-			v_dir = np.cross(z_axis, obj.getRadialVector()) * w
-			if i==0:
-				vel = v_dir
-			else:
-				vel = v_list[-1] + v_dir
-			v_list.append(vel)
-	return v_list
-
-def detectCollision(obj, plane):
+def detectCollision(obj):
 	# for now lets assume the ground is at x-y plane at z=0
 	x1,x2 = obj.lineX
 	y1,y2 = obj.lineY 
 	z1,z2 = obj.lineZ
-
-	nx,ny,nz = plane[0]
-	x0,y0,z0 = plane[1]
-
-	if ( (nx*(x2-x1) + ny*(y2-y1) + nz*(z2-z1) ) ) == 0:
-		# line parralel tp the plane
-		if (nx*(x0-x1) + ny*(y0-y1) + nz*(z0-z1) ) == 0:
-			# line lies on the plane therefore inf points of contact. 
-			# I will return just the end point (Remember)
-			point_of_contact = np.array([x2,y2,z2])
-			return True, point_of_contact, plane[0]
-		else:
-			# line is parallel to plane and does not lie on the plane
-			return False, None, None
-
-	lam = (nx*(x0-x1) + ny*(y0-y1) + nz*(z0-z1) ) / ( (nx*(x2-x1) + ny*(y2-y1) + nz*(z2-z1) ) )
-
-	if 0<=lam<=1:
-		point_of_contact = np.array([
-				x1 + lam*(x2-x1), 
-				y1 + lam*(y2-y1), 
-				z1 + lam*(z2-z1), 
-			])
-		return True, point_of_contact, plane[0]
+	if z1*z2<0:
+		return True
 	else:
-		return False, None, None
+		return False
 
-def detectCollisions(obj_list):
-	# there is a plane at z=0
-	# with which we have to compute the collision dynamics
-	plane = [np.array([0,0,1]), np.array([0,0,0])]
-	point_of_contacts = []
-	contact_normals = []
-	obj_indices = []
-	# plane is given by its normal vector and some point on the plane
-	n=len(obj_list)
-	for obj in obj_list:
-		if obj.type == 'RevoluteJoint':
-			isContact, point_of_contact, normal_contact = detectCollision(obj, plane)
-			if isContact:
-				point_of_contacts.append(point_of_contact)
-				contact_normals.append(normal_contact)
-				obj_indices.append(obj.index)
-
-	return obj_indices, point_of_contacts, contact_normals
-
-def calculate_joint_effector_accelerations(obj_list, d2qdt2):
-	a_list = []
-	n = len(obj_list)
-	for i in range(n):
-		obj = obj_list[i]
-		if i==0:
-			z_axis = np.array([0,0,1])
-		else:
-			z_axis = obj_list[i-1].z_axis
-
-		if obj.type == 'PrismaticJoint':
-			acc = z_axis * d2qdt2[i]
-			if not i==0:
-				acc = a_list[-1] + acc
-			a_list.append(acc)
-		else:
-			alpha = d2qdt2[i]
-			a_dir = np.cross(z_axis, obj.getRadialVector()) * alpha
-			if i==0:
-				acc = a_dir
-			else:
-				acc = a_list[-1] + a_dir
-			a_list.append(acc)
-	return a_list
-
-
-g = np.array([0,0,-10])
+# g = np.array([0,0,-10])
 # g = np.array([0,-10,0])
 # g = np.array([-10,0,0])
 # g = np.array([-1,-1,-1])
-# g = np.array([0,0,0])
+g = np.array([0,0,0])
 # same axis of rotation
-origin=np.array([4,4,4,4], dtype=np.float32)
+origin=np.array([4,4,1,1], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
 
 # pobj_0.addChild(pobj_1)
 
 
-pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,4, 4,4,4, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
-pobj_0.setMass(0)
-pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 4,4,4, 4,4,4, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
-pobj_1.setMass(0)
-# pobj_2 = PrismaticJoint.PrismaticJoint('pobj_2', 4,4,4, 4,4,4, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
+# pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
+# pobj_0.setMass(0)
+# pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
+# pobj_1.setMass(0)
+# pobj_2 = PrismaticJoint.PrismaticJoint('pobj_2', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
 # pobj_2.setMass(0)
-pobj_0.addChild(pobj_1)
+# pobj_0.addChild(pobj_1)
 # pobj_1.addChild(pobj_2)
 
-obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,4, 6,4,4, x_length=2, x_alpha=0,z_length=0, color="pink")
-# obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,4, 6,4,1, x_length=2, x_alpha=np.pi/2,z_length=0, color="violet")
+# obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=0,z_length=0, color="pink")
+obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=np.pi/2,z_length=0, color="violet")
 obj_1.showText = True
-pobj_1.addChild(obj_1)
+# pobj_1.addChild(obj_1)
 
-obj_2 = RevoluteJoint.RevoluteJoint('obj_2', 6,4,4, 8,4,4, x_length=2, x_alpha=0,z_length=0, color="cyan")
-obj_2.showText = True
+obj_2 = RevoluteJoint.RevoluteJoint('obj_2', 6,4,1, 8,4,1, x_length=2, x_alpha=0,z_length=0, color="cyan")
+# obj_2.showText = True
 obj_1.addChild(obj_2)
 
 
 # ground is the x-y plane
 # obj_list = [pobj_0]
-obj_list = [pobj_0,pobj_1, obj_1, obj_2]
 # obj_list = [pobj_0,pobj_1, obj_1]
 # obj_list = [pobj_0,pobj_1,pobj_2, obj_1, obj_2]
-# obj_list = [obj_1, obj_2]
+obj_list = [obj_1, obj_2]
 n = len(obj_list)
 
 # set Axis for all the joints ----
@@ -492,6 +373,10 @@ if __name__ == '__main__':
 	# intiatlising the matrices
 	# for linear chain
 	# TODO generalize it for general tree like structure
+	
+	dx = 0.0
+	dy = 0.0
+	dtheta = 0.0
 	t = 0
 
 	for i in range(n):
@@ -499,24 +384,17 @@ if __name__ == '__main__':
 		dqdt[i] = obj_list[i].getDq()
 		d2qdt2[i] = obj_list[i].getD2q()
 
-	# q = np.array([0,0,np.pi/2], dtype=np.float32)
-	# q = np.array([0,0,0,0], dtype=np.float32)
-	q = np.array([0,0,np.pi/2,np.pi/8], dtype=np.float32)
-	# dqdt = np.array([0,0,-1,0], dtype=np.float32)
-	# dqdt = np.array([-2,0,1,0], dtype=np.float32)
-
-	for i in range(n):
-		obj_list[i].setQ(q[i] )
-		obj_list[i].setDq(dqdt[i] )
-		obj_list[i].setD2q(d2qdt2[i] )
-
-
+	# dqdt = np.array([0,-2,2], dtype=np.float32)
+	# dqdt = np.array([0,0,-2,2], dtype=np.float32)
+	# dqdt = np.array([0,0,10], dtype=np.float32)
+	# dqdt = np.array([0,0,-4,2,0], dtype=np.float32)
+	# dqdt = np.array([0,0,-4,2,3], dtype=np.float32)
+	# dqdt = np.array([-1/3,0,0,0,1], dtype=np.float32)
+	dqdt = np.array([0,-2], dtype=np.float32)
 
 	# t_list=[]
 	# e_list=[]
 	# q_list=[]
-	collision = True
-	# collision = False
 	while True:
 
 		rhs = torque.copy()
@@ -529,94 +407,66 @@ if __name__ == '__main__':
 		Dq_derivative = evaluate_Dq_derivative(obj_list) # its is matrix of shape - nXnXn
 		C = createCArray(Dq_derivative, dqdt)
 		# create Mc matrix
-
-		rhs = rhs - phi - C
-		# for k in range(n):
-		# 	rhs[k] = rhs[k] - phi[k] - C[k]
+		for k in range(n):
+			rhs[k] = rhs[k] - phi[k] - C[k]
 
 		d2qdt2 = np.linalg.solve(Dq, rhs)
 
-		# impulse_vector = np.concatenate([impulse, np.array([0,0,0])] ,axis=0)
-		# if collision:
-		# 	obj_indices, contact_points, contact_normals = detectCollisions(obj_list)
-		# 	if len(contact_points) > 0:
-		# 		# collision is detected therefore apply collision constraints
-		# 		m = 4		
-		# 		K = np.zeros((m,m))
-		# 		coef_rest = 0.5
-		# 		acc_diff = np.zeros((m,))
-		# 		d2qdt2_end_effectors = calculate_joint_effector_accelerations(obj_list, d2qdt2)
-		# 		for i in range(m): # for second dof
-		# 			g_i = 1  # force/torque at ith joint
-		# 			test_force = rhs.copy()
-		# 			test_force[i] += g_i
-		# 			d2qdt2_test = np.linalg.solve(Dq, test_force)
-		# 			# apply this g_i force to calculate kij's
-		# 			for j in range(m):
-		# 				q_t = d2qdt2_test[j]
-		# 				q_0 = d2qdt2[j]
-		# 				k_ij = (q_t - q_0) / g_i
-		# 				K[i,j] = k_ij
 
-		# 			d2qdt2_end_effectors_test = calculate_joint_effector_accelerations(obj_list, d2qdt2_test)
-		# 			obj = obj_list[i]
-		# 			if i not in obj_indices:
-		# 				acc_diff[i] = 0 # no change in acc
-		# 			else:
-		# 				list_index = obj_indices.index(i)
-		# 				contact_point = contact_points[list_index]
-		# 				contact_normal = contact_normals[list_index]
-		# 				# solve the constraint equation ---> using LCP
-		# 				print("Collision of object index ", i , "with ground at this point ", contact_point)
-		# 				vels = calculate_joint_effector_velocities(obj_list)
-		# 				vel = vels[i]
-		# 				final_vel = -coef_rest * vel
-		# 				init_vel = vel
-		# 				final_acc = (final_vel - init_vel)/dt
-		# 				final_acc_z = np.transpose(final_acc) @ contact_normal
-		# 				# pdb.set_trace()
-		# 				acc_diff[0] = final_acc_z - d2qdt2[0]
-		# 				acc_diff[i] = 0
-		# 		print(acc_diff, vel)
-		# 		pdb.set_trace()
-		# 		print(K)
+		# Assuming Dq, C are constant as velocity and position cannot change instantaneously
+		K = np.zeros((n,n))
+		coef_rest = 0.1
+		init_acc = np.zeros((n,))
+		for i in range(n): # for second dof
+			g_i = 1  # force/torque at ith joint
+			test_force = rhs.copy()
+			test_force[i] += g_i
+			d2qdt2_test = np.linalg.solve(Dq, test_force)		
 
-		# 		f = np.linalg.solve(K,acc_diff)
-		# 		# pdb.set_trace()
-		# 		rhs_new = rhs.copy()
-		# 		rhs_new[0:m] += f[0:m]
-		# 		d2qdt2 = np.linalg.solve(Dq, rhs_new)
-
+			obj = obj_list[i]
+			if(detectCollision(obj)):
+				print("Collision")
+				final_vel = -coef_rest * obj.getDq()
+				init_vel = obj_list[i].getDq()
+				final_acc = (final_vel - init_vel)/dt
+				init_acc[i] = final_acc - d2qdt2[i]
+			else:
+				# TODO AVOID HARD CODING
+				if not i==1:
+					init_acc[i] = -d2qdt2[i] # to enforce steady constraints
+				else:
+					init_acc[i] = 0	
+			# apply this g_i force to calculate kij's
+			for j in range(n):
+				q_t = d2qdt2_test[j]
+				q_0 = d2qdt2[j]
+				k_ij = (q_t - q_0) / g_i
+				K[i,j] = k_ij
+		f = np.linalg.inv(K) @ init_acc
+		new_rhs = rhs.copy()
+		new_rhs[0:n] += f
+		d2qdt2 = np.linalg.solve(Dq, new_rhs)
 		# to constraint the root joint to have zero acceleration
-		# q += dqdt*dt 
-		q += dqdt*dt + 0.5 * dt*dt*d2qdt2
+
+		# detect collisions - 
+		# for obj in obj_list:
+		# 	if(detectCollision(obj)):
+		# 		print('Collision')
+		# 		obj.Dq_flag = False
+		# 		obj_vel = dqdt[obj.index]
+		# 		dqdt[obj.index] = - 0.5 * obj_vel
+		# 		# obj.setDq(-obj_vel)
+		# 		obj.setD2q(0)
+		# 	# pdb.set_trace()
+		# 	obj = obj_list[1]
+		# 	dz = obj.lineZ[1]
+		# 	dqdt[1] = -dz
+		# 	d2qdt2[1] = 0
+			# d2qdt2[1] = -dz*50
+
+		q += dqdt*dt
 		dqdt += d2qdt2*dt
 		t += dt
-
-		# collision_dqdt = np.zeros((n,))
-		# if collision:
-		# 	obj_indices, contact_points, contact_normals = detectCollisions(obj_list)
-		# 	coef_rest = 0.6
-		# 	if len(contact_points) > 0:
-		# 		# collision is detected therefore apply collision constraints
-		# 		# for now this is hard coded since there is only 1 collision point_of_contact
-		# 		# TODO correct it
-		# 		i = obj_indices[0]
-		# 		list_index = obj_indices.index(i)
-		# 		Jvi = evaluateJacobian(obj_list, list_index)
-		# 		contact_point = contact_points[list_index]
-		# 		contact_normal = contact_normals[list_index]
-		# 		# solve the constraint equation ---> using LCP
-		# 		print("Collision of object index ", i , "with ground at this point ", contact_point)
-		# 		vels = calculate_joint_effector_velocities(obj_list)
-		# 		vel = vels[i]
-		# 		final_vel = -coef_rest * vel
-		# 		init_vel = vel
-		# 		impulse = (final_vel - init_vel)
-		# 		collision_dqdt = np.linalg.solve(Dq, np.transpose(Jvi)@impulse )
-
-		dqdt += collision_dqdt
-
 
 		obj = obj_list[0]
 		links = [obj]
@@ -653,19 +503,16 @@ if __name__ == '__main__':
 					links.append(obj.child[i])
 		# pdb.set_trace()
 		# print("t: ", np.array([t]), " q : ", q, "dqdt : " , dqdt, "d2qdt2 : ", d2qdt2, "rhs : ", rhs, "ke : ", np.array([ke]), "pe : ", np.array([pe]))
-		print("t: ", np.array([t]), "d2qdt2 : ", d2qdt2)
-		# print("t: ", np.array([t]), "d2qdt2_new : ", d2qdt2_new)
-		print("t: ", np.array([t]), "dqdt : ", dqdt)
+		# print("t: ", np.array([t]), "d2qdt2 : ", d2qdt2)
+		# print("t: ", np.array([t]), "dqdt : ", dqdt)
 		# print("t: ", np.array([t]), "q : ", q)
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
 		# print("t: ", np.array([t]), "Angular momentum : ", '\n',  Dq@dqdt, np.sum(Dq@dqdt))
 		# # print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
 		# # print("t: ", np.array([t]), "C : ", C)	
-		print("t: ", np.array([t]), "Phi : ", phi)
-		print("t: ", np.array([t]), "rhs : ", rhs)
-		# print("t: ", np.array([t]), "rhs_new : ", rhs_new)
+		# print("t: ", np.array([t]), "Phi : ", phi)
+		# # print("t: ", np.array([t]), "rhs : ", rhs)
 		print()
-		# pdb.set_trace()
 
 		# debug statemetns
 		# t_list.append(t)

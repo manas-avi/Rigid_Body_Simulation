@@ -184,6 +184,13 @@ class RevoluteJoint(object):
 	def getMass(self):
 		return self.mass
 
+	def getRadialVector(self):
+		x1,x2 = self.lineX
+		y1,y2 = self.lineY 
+		z1,z2 = self.lineZ
+		return np.array([x2-x1, y2-y1, z2-z1])
+
+
 	def drawObject(self, ax):
 		if self.isMovable and self.showText:
 			w = self.dq[0]
