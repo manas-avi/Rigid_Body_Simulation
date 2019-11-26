@@ -328,13 +328,16 @@ def detectCollision(obj, plane):
 	nx,ny,nz = plane[0]
 	x0,y0,z0 = plane[1]
 
-	if ( abs(nx*(x2-x1) + ny*(y2-y1) + nz*(z2-z1) ) ) <= 1e-3:
-		# line parralel tp the plane
-		if ( abs(nx*(x0-x1) + ny*(y0-y1) + nz*(z0-z1)) ) <= 1e-3:
+	eps = 1e-1
+
+	if ( abs(nx*(x2-x1) + ny*(y2-y1) + nz*(z2-z1) ) ) <= eps:
+		# line very close to being parralel to the plane
+		if ( abs(nx*(x0-x1) + ny*(y0-y1) + nz*(z0-z1)) ) <= eps:
 			# line lies on the plane therefore inf points of contact. 
 			# I will return just the end point (Remember)
 			point_of_contact = np.array([(x1+x2)/2,(y1+y2)/2,(z1+z2)/2])
 			return True, point_of_contact, plane[0], -1
+		# elif ( abs(nx*(x0-x2) + ny*(y0-y2) + nz*(z0-z2)) ) <= eps:
 			# lam=-1 means every point is touching
 		else:
 			# line is parallel to plane and does not lie on the plane
@@ -379,32 +382,6 @@ def detectCollisions(obj_list):
 
 	return obj_indices, point_of_contacts, contact_normals, point_affect_list
 
-def calculate_joint_effector_accelerations(obj_list, d2qdt2):
-	a_list = []
-	n = len(obj_list)
-	for i in range(n):
-		obj = obj_list[i]
-		if i==0:
-			z_axis = np.array([0,0,1])
-		else:
-			z_axis = obj_list[i-1].z_axis
-
-		if obj.type == 'PrismaticJoint':
-			acc = z_axis * d2qdt2[i]
-			if not i==0:
-				acc = a_list[-1] + acc
-			a_list.append(acc)
-		else:
-			alpha = d2qdt2[i]
-			a_dir = np.cross(z_axis, obj.getRadialVector()) * alpha
-			if i==0:
-				acc = a_dir
-			else:
-				acc = a_list[-1] + a_dir
-			a_list.append(acc)
-	return a_list
-
-
 class World(object):
 	"""docstring for World"""
 	def __init__(self, obj_list):
@@ -436,7 +413,7 @@ class World(object):
 		# q = np.array([0,0,np.pi/2], dtype=np.float32)
 		self.q = np.array([0,0,3*np.pi/4], dtype=np.float32)
 		# self.q = np.array([0,0,np.pi/2,np.pi/8], dtype=np.float32)
-		self.dqdt = np.array([0,0,1], dtype=np.float32)
+		# self.dqdt = np.array([0,0,1], dtype=np.float32)
 		# self.dqdt = np.array([0,0,0,1], dtype=np.float32)
 		# dqdt = np.array([2,0,1,0], dtype=np.float32)
 
@@ -453,6 +430,90 @@ class World(object):
 
 	def set_link_origin(self, origin):
 		self.origin = origin
+
+	def advect1(self, torque, dt):
+		obj_list = self.obj_list
+		n = len(obj_list)
+
+		# assigning it like this makses a shallow copy
+		q = self.q.copy()
+		dqdt = self.dqdt.copy()
+		collision = True
+		ke = 0
+		Dq =  evaluate_Dq(obj_list)
+		ke = (1/2) * np.transpose(dqdt) @ Dq @ dqdt
+		pe = evaluate_potential_energy(obj_list, self.gravity)
+		phi = evaluate_potential_energy_derivative(obj_list, self.gravity)
+		# create phi array as derivative of pe with qi's
+		Dq_derivative = evaluate_Dq_derivative(obj_list) # its is matrix of shape - nXnXn
+		C = createCArray(Dq_derivative, dqdt)
+		# create Mc matrix
+		rhs = torque - phi - C
+		rhs = rhs * dt
+
+		def collision_response():
+			vel_diff = np.zeros((n,))
+			if collision:
+				obj_indices, contact_points, contact_normals, point_affect_list = detectCollisions(obj_list)
+				if len(contact_points) > 0:
+					# collision is detected therefore apply collision constraints
+					coef_rest = 0.9
+					for i in obj_indices: 
+						obj = obj_list[i]
+						list_index = obj_indices.index(i)
+						contact_point = contact_points[list_index]
+						contact_normal = contact_normals[list_index]
+						point_affect = point_affect_list[list_index]
+						Jvi = evaluateJacobian(obj_list, i, point_affect)
+						# solve the constraint equation ---> using LCP
+
+						N_lcp = np.transpose(Jvi) @ contact_normal
+						tau_star = rhs + Dq @ dqdt
+						lcp_A1 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp)
+						lcp_q1 = np.transpose(N_lcp) @ np.linalg.inv(Dq) @ tau_star
+						# other friction terms will also come for now ignoring
+						lcp_A = np.zeros((3,3))
+						lcp_A[0,0] = lcp_A1
+						lcp_A[1,1] = 1
+						lcp_A[2,2] = 1
+
+						lcp_q = np.array([lcp_q1, 0, 0])
+						sol = lcp.lemkelcp(lcp_A,lcp_q)
+						fn = sol[0][0] * (1+coef_rest)
+						return dt* N_lcp * fn
+
+				else:
+					return np.array([0,0,0])
+			else:
+				return np.array([0,0,0])
+
+		cr = collision_response()
+		rhs += cr
+		new_momentum = rhs + Dq @ dqdt
+		dqdt = np.linalg.solve(Dq, new_momentum )
+		q += dqdt*dt
+
+		self.q = q.copy()
+		self.dqdt = dqdt.copy()
+
+		t = self.t
+		self.t += dt
+
+		print("t: ", np.array([t]), "dqdt : ", dqdt)
+		self.update()
+		Jci = evaluateJacobian(obj_list, 2, -1)
+		Jvi = evaluateJacobian(obj_list, 2, 1)
+		print("t: ", np.array([t]), "com vel : ", Jci@dqdt)
+		print("t: ", np.array([t]), "end vel : ", Jvi@dqdt)
+		# print("t: ", np.array([t]), "q : ", q)
+		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
+		# # print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
+		# # print("t: ", np.array([t]), "C : ", C)	
+		print("t: ", np.array([t]), "Phi : ", phi)
+		print("t: ", np.array([t]), "rhs : ", rhs)
+		print()
+
+
 
 	def advect(self, torque, dt):
 		obj_list = self.obj_list
@@ -516,7 +577,6 @@ class World(object):
 						contact_point = contact_points[list_index]
 						contact_normal = contact_normals[list_index]
 						point_affect = point_affect_list[list_index]
-						end = None
 						Jvi = evaluateJacobian(obj_list, i, point_affect)
 						Jci = evaluateJacobian(obj_list, i, -1)
 						# solve the constraint equation ---> using LCP

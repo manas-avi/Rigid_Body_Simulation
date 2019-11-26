@@ -97,7 +97,8 @@ if __name__ == '__main__':
 	collision = True
 	# collision = False
 	while True:
-		world.advect(torque, dt)
+		# world.advect(torque, dt)
+		world.advect1(torque, dt)
 		world.update()
 
 		# debug statemetns
