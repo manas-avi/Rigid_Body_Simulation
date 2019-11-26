@@ -140,6 +140,7 @@ def evaluate_Dq(obj_list):
 
 		# RE part -----------------
 		Ii = obj_list[i].Ic
+		# CHECK IF IT IS CORRECT OR NOT
 		Ri = Ri @ obj_list[i].get_rotation_matrix()[0:3,0:3]	
 		Jwi = np.zeros((3,n))
 		for j in range(i+1):
@@ -180,7 +181,8 @@ def evaluate_Dq_derivative(obj_list):
 		matrix = np.eye(3)
 		dmatrix = np.eye(3)
 		R_list=[]
-		dR_list=[]		
+		dR_list=[]	
+
 		for i in range(0,n):
 			if i==k:
 				dmatrix = dmatrix @ obj_list[i].get_rotation_matrix_derivative()[0:3,0:3]
@@ -197,7 +199,6 @@ def evaluate_Dq_derivative(obj_list):
 
 		for obj_index in range(n):
 			# this loops for different object Jvi that contribute to the Dq nXn matrix
-
 			mi = obj_list[obj_index].getMass()
 			Jvi = np.zeros((3,n))
 			dJvi = np.zeros((3,n))
@@ -424,7 +425,7 @@ class World(object):
 		self.q = np.zeros((n))
 		self.dqdt = np.zeros((n))
 		self.d2qdt2 = np.zeros((n))
-		self.gravity = np.array([0,0,-10], dtype=np.float32)
+		self.gravity = np.array([0,0,-50], dtype=np.float32)
 
 		# for linear chain
 		# TODO generalize it for general tree like structure
@@ -435,7 +436,8 @@ class World(object):
 
 		# q = np.array([0,0,np.pi/2], dtype=np.float32)
 		# self.q = np.array([0,0,3*np.pi/4], dtype=np.float32)
-		self.q = np.array([0,0,np.pi/2 - np.pi/8,2*np.pi/8], dtype=np.float32)
+		# self.q = np.array([0,0,np.pi/2 - np.pi/8,2*np.pi/8], dtype=np.float32)
+		self.q = np.array([0,0,np.pi/2 ,2*np.pi/8], dtype=np.float32)
 		# self.q = np.array([0,0,0 ,2*np.pi/8], dtype=np.float32)
 		# self.dqdt = np.array([0,0,1], dtype=np.float32)
 		# self.dqdt = np.array([0,0,0,1], dtype=np.float32)
@@ -728,23 +730,23 @@ class World(object):
 			self.obj_list[i].drawObject(self.ax)
 
 		# debug code ----------------------------------
-		O = np.zeros((n+1,3))
-		Oc = np.zeros((3,))
-		matrix = np.eye(4)
-		mass = 0
-		for i in range(1,n+1):
-			matrix = matrix @ self.obj_list[i-1].get_transformation_matrix() 
-			O[i] = self.origin[0:3] + (matrix @ np.append([O[0]],1))[0:3]
-			if i==1:
-				Oc += self.obj_list[i-1].getMass() * (O[i] + self.origin[0:3]) / 2.0
-			else:
-				Oc += self.obj_list[i-1].getMass() * (O[i] + O[i-1]) / 2.0
-			mass += self.obj_list[i-1].getMass()
+		# O = np.zeros((n+1,3))
+		# Oc = np.zeros((3,))
+		# matrix = np.eye(4)
+		# mass = 0
+		# for i in range(1,n+1):
+		# 	matrix = matrix @ self.obj_list[i-1].get_transformation_matrix() 
+		# 	O[i] = self.origin[0:3] + (matrix @ np.append([O[0]],1))[0:3]
+		# 	if i==1:
+		# 		Oc += self.obj_list[i-1].getMass() * (O[i] + self.origin[0:3]) / 2.0
+		# 	else:
+		# 		Oc += self.obj_list[i-1].getMass() * (O[i] + O[i-1]) / 2.0
+		# 	mass += self.obj_list[i-1].getMass()
 		# Oc = Oc/ mass
-		Oc = (O[2] + O[3]) / 2 
+		# Oc = (O[2] + O[3]) / 2 
 		# Oc = ((O[2] + O[3]) / 2 + (O[3] + O[4]) / 2) / 2
 			# ax.plot( [O[i-1][0], O[i][0]] ,[O[i-1][1], O[i][1]], [O[i-1][2], O[i][2]], marker = '*', color='red')
-		self.ax.plot( [Oc[0]] ,[Oc[1]], [Oc[2]], marker = '*', color='red')
+		# self.ax.plot( [Oc[0]] ,[Oc[1]], [Oc[2]], marker = '*', color='red')
 
 		# draw ground at xy plane
 		xx, yy = np.meshgrid(range(0,11,10), range(0,11,10))

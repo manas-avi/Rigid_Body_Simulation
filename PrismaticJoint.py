@@ -167,14 +167,14 @@ class PrismaticJoint(object):
 	def drawObject(self, ax):
 		if self.isMovable and self.showText:
 			w = self.dq[0]
-			ax.text(self.lineX[0], self.lineY[0], self.lineZ[0], '  w:' + str(round(w, 4)) ) 
-		ax.plot( self.lineX,self.lineY, self.lineZ, marker = 'o', color=self.color)
+			# ax.text(self.lineX[0], self.lineY[0], self.lineZ[0], '  w:' + str(round(w, 4)) ) 
+		# ax.plot( self.lineX,self.lineY, self.lineZ, marker = 'o', color=self.color)
 
 		if self.showCom:
 			x1,x2 = self.lineX
 			y1,y2 = self.lineY 
 			z1,z2 = self.lineZ
-			ax.plot( [(x1+x2)/2],[(y1+y2)/2], [(z1+z2)/2], marker = '*', color=self.color )
+			# ax.plot( [(x1+x2)/2],[(y1+y2)/2], [(z1+z2)/2], marker = '*', color=self.color )
 
 	def getLength(self):
 		return np.sqrt( (self.lineX[0]-self.lineX[1])**2 + (self.lineY[0]-self.lineY[1])**2 
