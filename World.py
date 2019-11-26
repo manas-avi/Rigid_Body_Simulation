@@ -10,6 +10,29 @@ from special_matrices import *
 from algorithms import *
 import lemkelcp as lcp
 
+def axisAngleRotationMatrix(angle, axis):
+	mat = np.zeros((3,3))
+	c = np.cos(angle)
+	s = np.sin(angle)
+	ux = axis[0]
+	uy = axis[1]
+	uz = axis[2]
+
+	mat[0,0] = c + (1-c)*ux**2
+	mat[0,1] = ux*uy*(1-c) - uz*s
+	mat[0,2] = ux*uz*(1-c) + uy*s
+
+	mat[1,0] = uy*ux*(1-c) + uz*s
+	mat[1,1] = c + (1-c)*uy**2
+	mat[1,2] = uy*uz*(1-c) - ux*s
+	
+	mat[2,0] = uz*ux*(1-c) - uy*s
+	mat[2,1] = uz*uy*(1-c) + ux*s
+	mat[2,2] = c + (1-c)*uz**2
+
+	return mat
+
+
 def evaluate_potential_energy(obj_list, g):
 	n = len(obj_list)
 	P = 0
@@ -411,8 +434,9 @@ class World(object):
 			self.d2qdt2[i] = obj_list[i].getD2q()
 
 		# q = np.array([0,0,np.pi/2], dtype=np.float32)
-		self.q = np.array([0,0,3*np.pi/4], dtype=np.float32)
-		# self.q = np.array([0,0,np.pi/2,np.pi/8], dtype=np.float32)
+		# self.q = np.array([0,0,3*np.pi/4], dtype=np.float32)
+		self.q = np.array([0,0,np.pi/2 - np.pi/8,2*np.pi/8], dtype=np.float32)
+		# self.q = np.array([0,0,0 ,2*np.pi/8], dtype=np.float32)
 		# self.dqdt = np.array([0,0,1], dtype=np.float32)
 		# self.dqdt = np.array([0,0,0,1], dtype=np.float32)
 		# dqdt = np.array([2,0,1,0], dtype=np.float32)
@@ -457,6 +481,8 @@ class World(object):
 				obj_indices, contact_points, contact_normals, point_affect_list = detectCollisions(obj_list)
 				if len(contact_points) > 0:
 					# collision is detected therefore apply collision constraints
+					num_contact_point = len(contact_points)
+					N_lcp = np.zeros((n,num_contact_point))
 					coef_rest = 0.9
 					for i in obj_indices: 
 						obj = obj_list[i]
@@ -466,26 +492,29 @@ class World(object):
 						point_affect = point_affect_list[list_index]
 						Jvi = evaluateJacobian(obj_list, i, point_affect)
 						# solve the constraint equation ---> using LCP
+						# N_lcp = np.transpose(Jvi) @ contact_normal
+						N_lcp_i = np.transpose(Jvi) @ contact_normal
+						N_lcp[:,list_index] = N_lcp_i
 
-						N_lcp = np.transpose(Jvi) @ contact_normal
-						tau_star = rhs + Dq @ dqdt
-						lcp_A1 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp)
-						lcp_q1 = np.transpose(N_lcp) @ np.linalg.inv(Dq) @ tau_star
-						# other friction terms will also come for now ignoring
-						lcp_A = np.zeros((3,3))
-						lcp_A[0,0] = lcp_A1
-						lcp_A[1,1] = 1
-						lcp_A[2,2] = 1
+					tau_star = rhs + Dq @ dqdt
+					lcp_A1 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp)
+					lcp_q1 = np.transpose(N_lcp) @ np.linalg.inv(Dq) @ tau_star
+					# other friction terms will also come for now ignoring
+					lcp_A = np.zeros((2+num_contact_point,2+num_contact_point))
+					lcp_A[0:num_contact_point,0:num_contact_point] = lcp_A1
+					lcp_A[0+num_contact_point,0+num_contact_point] = 1
+					lcp_A[1+num_contact_point,1+num_contact_point] = 1
 
-						lcp_q = np.array([lcp_q1, 0, 0])
-						sol = lcp.lemkelcp(lcp_A,lcp_q)
-						fn = sol[0][0] * (1+coef_rest)
-						return dt* N_lcp * fn
+					lcp_q = np.append(lcp_q1, [0, 0])
+					sol = lcp.lemkelcp(lcp_A,lcp_q)
+					fn = sol[0][0:num_contact_point] * (1+coef_rest)
+					val = dt* N_lcp @ fn
+					return np.reshape(val, (n,))
 
 				else:
-					return np.array([0,0,0])
+					return np.zeros((n,))
 			else:
-				return np.array([0,0,0])
+				return np.zeros((n,))
 
 		cr = collision_response()
 		rhs += cr
@@ -501,10 +530,10 @@ class World(object):
 
 		print("t: ", np.array([t]), "dqdt : ", dqdt)
 		self.update()
-		Jci = evaluateJacobian(obj_list, 2, -1)
-		Jvi = evaluateJacobian(obj_list, 2, 1)
-		print("t: ", np.array([t]), "com vel : ", Jci@dqdt)
-		print("t: ", np.array([t]), "end vel : ", Jvi@dqdt)
+		# Jci = evaluateJacobian(obj_list, 2, -1)
+		# Jvi = evaluateJacobian(obj_list, 2, 1)
+		# print("t: ", np.array([t]), "com vel : ", Jci@dqdt)
+		# print("t: ", np.array([t]), "end vel : ", Jvi@dqdt)
 		# print("t: ", np.array([t]), "q : ", q)
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
 		# # print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
@@ -657,22 +686,37 @@ class World(object):
 
 			obj.update(origin)
 
-			# update axes
-			axis_x, axis_y, axis_z = np.array([[1,0,0],[0,1,0],[0,0,1]])
-			for i in range(0,n):
-				matrix = obj_list[i].get_transformation_matrix()[0:3,0:3]
-				axis_x = matrix @ axis_x
-				axis_y = matrix @ axis_y
-				axis_z = matrix @ axis_z 
-				obj_list[i].set_xaxis(axis_x)
-				obj_list[i].set_yaxis(axis_y)
-				obj_list[i].set_zaxis(axis_z)
-
 			if len(obj.child ) == 0:
 				continue
 			else:
 				for i in range(len(obj.child)):
 					links.append(obj.child[i])
+
+		# update axes
+		axis_x, axis_y, axis_z = np.array([[1,0,0],[0,1,0],[0,0,1]])
+		for i in range(0,n):
+			# matrix = obj_list[i].get_transformation_matrix()[0:3,0:3]
+			# axis_x_new = rotate_axis_x with axis_z with theta_i
+			# axis_z_new = rotate_axis_z with axis_x_new with alpha_i
+
+			alpha = obj_list[i].getAlpha()
+			theta = obj_list[i].getTheta()
+			axis_x_new = axisAngleRotationMatrix(theta, axis_z) @ axis_x
+			axis_z_new = axisAngleRotationMatrix(alpha, axis_x_new) @ axis_z
+			axis_y_new = np.cross(axis_z_new, axis_x_new)
+
+
+			axis_x = axis_x_new
+			axis_y = axis_y_new
+			axis_z = axis_z_new
+			obj_list[i].set_xaxis(axis_x)
+			obj_list[i].set_yaxis(axis_y)
+			obj_list[i].set_zaxis(axis_z)
+			# print("x_axis ", axis_x)
+			# # print(axis_y)
+			# print("z_axis ", axis_z)
+			# print()
+		# pdb.set_trace()
 
 	def render(self):
 		n = len(self.obj_list)

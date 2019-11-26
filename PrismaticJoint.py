@@ -180,3 +180,9 @@ class PrismaticJoint(object):
 		return np.sqrt( (self.lineX[0]-self.lineX[1])**2 + (self.lineY[0]-self.lineY[1])**2 
 						+ (self.lineZ[0]-self.lineZ[1])**2 )
 
+
+	def getAlpha(self):
+		return self.x_alpha
+
+	def getTheta(self):
+		return self.q_angle

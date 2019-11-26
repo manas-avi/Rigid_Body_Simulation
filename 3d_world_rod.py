@@ -24,36 +24,36 @@ g = np.array([0,0,-10])
 # g = np.array([-1,-1,-1])
 # g = np.array([0,0,0])
 # same axis of rotation
-origin=np.array([4,4,3,4], dtype=np.float32)
+origin=np.array([4,4,2,4], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
 
 # pobj_0.addChild(pobj_1)
 
 
-pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,3, 4,4,3, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
+pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
 pobj_0.setMass(0)
 pobj_0.showText = True
-pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 4,4,3, 4,4,3, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
+pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
 pobj_1.setMass(0)
-# pobj_2 = PrismaticJoint.PrismaticJoint('pobj_2', 4,4,3, 4,4,3, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
+# pobj_2 = PrismaticJoint.PrismaticJoint('pobj_2', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
 # pobj_2.setMass(0)
 pobj_0.addChild(pobj_1)
 # pobj_1.addChild(pobj_2)
 
-obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,3, 6,4,3, x_length=2, x_alpha=0,z_length=0, color="pink")
-# obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,3, 6,4,1, x_length=2, x_alpha=np.pi/2,z_length=0, color="violet")
+obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=0,z_length=0, color="pink")
+# obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=np.pi/2,z_length=0, color="violet")
 obj_1.showText = True
 pobj_1.addChild(obj_1)
 
-obj_2 = RevoluteJoint.RevoluteJoint('obj_2', 6,4,3, 8,4,3, x_length=2, x_alpha=0,z_length=0, color="cyan")
+obj_2 = RevoluteJoint.RevoluteJoint('obj_2', 6,4,1, 8,4,1, x_length=2, x_alpha=0,z_length=0, color="cyan")
 obj_2.showText = True
 obj_1.addChild(obj_2)
 
 
 # ground is the x-y plane
 # obj_list = [pobj_0]
-# obj_list = [pobj_0,pobj_1, obj_1, obj_2]
-obj_list = [pobj_0,pobj_1, obj_1]
+obj_list = [pobj_0,pobj_1, obj_1, obj_2]
+# obj_list = [pobj_0,pobj_1, obj_1]
 # obj_list = [pobj_0,pobj_1,pobj_2, obj_1, obj_2]
 # obj_list = [obj_1, obj_2]
 n = len(obj_list)
@@ -127,17 +127,3 @@ if __name__ == '__main__':
 # thus its value depend on how small dt is
 # thus not giving an exact answer since area intergerated is not correct.
 # since get transformation matrix depends on the value of current theta
-
-						# vel = Jvi @ dqdt
-						# final_vel = -coef_rest * vel
-						# init_vel = vel
-						# final_acc = (final_vel - init_vel)
-						# pdb.set_trace()
-
-						# calculate Impulse
-						# end_effector_mass_inv = ( Jvi @ np.linalg.inv(Dq) @ np.transpose(Jvi) )
-						# taustar = Dq @ dqdt + dt*(rhs)
-						# A = dt* end_effector_mass_inv
-						# qlcp = Jvi @ np.linalg.inv(Dq) @ taustar
-						# fn = lcp.lemkelcp(A, qlcp)
-						# pdb.set_trace()
