@@ -7,8 +7,6 @@ import PrismaticJoint
 import World
 import matplotlib.pyplot as plt
 import pdb
-from special_matrices import *
-from algorithms import *
 import lemkelcp as lcp
 # set options for now I am not considering the
 # world else this will be handled by the world
@@ -52,8 +50,8 @@ obj_1.addChild(obj_2)
 
 # ground is the x-y plane
 # obj_list = [pobj_0]
-obj_list = [pobj_0,pobj_1, obj_1, obj_2]
-# obj_list = [pobj_0,pobj_1, obj_1]
+# obj_list = [pobj_0,pobj_1, obj_1, obj_2]
+obj_list = [pobj_0,pobj_1, obj_1]
 # obj_list = [pobj_0,pobj_1,pobj_2, obj_1, obj_2]
 # obj_list = [obj_1, obj_2]
 n = len(obj_list)
@@ -85,7 +83,7 @@ for i in range(n):
 
 
 if __name__ == '__main__':
-	dt = 0.01/2
+	dt = 0.01
 	world = World.World(obj_list)
 	world.set_link_origin(origin)
 	world.set_gravity(g)

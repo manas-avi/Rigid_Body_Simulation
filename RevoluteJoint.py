@@ -1,6 +1,5 @@
 import numpy as np
 import pdb
-from special_matrices import *
 from scipy.spatial.transform import Rotation as R
 
 class RevoluteJoint(object):

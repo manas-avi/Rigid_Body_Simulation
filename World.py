@@ -6,9 +6,26 @@ import RevoluteJoint
 import PrismaticJoint
 import matplotlib.pyplot as plt
 import pdb
-from special_matrices import *
-from algorithms import *
 import lemkelcp as lcp
+
+np.set_printoptions(suppress=True)
+
+
+def createBasisVector(contact_normal, contact_point, num_vectors):
+	t1 = np.cross(contact_normal, np.array([1,0,0])) # some direction 
+	# since it is a cross product it will always be perpendicular to normal
+	t2 = np.cross(t1, contact_normal) # some direction 
+	t1 = t1 / np.linalg.norm(t1)
+	t2 = t2 / np.linalg.norm(t2)
+
+	vectors_list = []
+	for i in range(num_vectors):
+		theta_i = 2*np.pi*i/(num_vectors)
+		t_i = np.cos(theta_i)*t2+ np.sin(theta_i)*t1
+		vectors_list.append(t_i)
+	vectors_list = np.transpose(np.array(vectors_list))
+	return vectors_list
+
 
 def axisAngleRotationMatrix(angle, axis):
 	mat = np.zeros((3,3))
@@ -425,7 +442,7 @@ class World(object):
 		self.q = np.zeros((n))
 		self.dqdt = np.zeros((n))
 		self.d2qdt2 = np.zeros((n))
-		self.gravity = np.array([0,0,-50], dtype=np.float32)
+		self.gravity = np.array([0,0,-10], dtype=np.float32)
 
 		# for linear chain
 		# TODO generalize it for general tree like structure
@@ -435,9 +452,9 @@ class World(object):
 			self.d2qdt2[i] = obj_list[i].getD2q()
 
 		# q = np.array([0,0,np.pi/2], dtype=np.float32)
-		# self.q = np.array([0,0,3*np.pi/4], dtype=np.float32)
+		self.q = np.array([0,0,3*np.pi/4], dtype=np.float32)
 		# self.q = np.array([0,0,np.pi/2 - np.pi/8,2*np.pi/8], dtype=np.float32)
-		self.q = np.array([0,0,np.pi/2 ,2*np.pi/8], dtype=np.float32)
+		# self.q = np.array([0,0,np.pi/2 ,2*np.pi/8], dtype=np.float32)
 		# self.q = np.array([0,0,0 ,2*np.pi/8], dtype=np.float32)
 		# self.dqdt = np.array([0,0,1], dtype=np.float32)
 		# self.dqdt = np.array([0,0,0,1], dtype=np.float32)
@@ -478,14 +495,23 @@ class World(object):
 		rhs = rhs * dt
 
 		def collision_response():
+			coef_rest = 0.0
+			coef_fric = 1.0
+			number_of_basis_vectors = 4
 			vel_diff = np.zeros((n,))
 			if collision:
 				obj_indices, contact_points, contact_normals, point_affect_list = detectCollisions(obj_list)
 				if len(contact_points) > 0:
 					# collision is detected therefore apply collision constraints
-					num_contact_point = len(contact_points)
-					N_lcp = np.zeros((n,num_contact_point))
-					coef_rest = 0.9
+					num_contact_points = len(contact_points)
+					d = number_of_basis_vectors
+					p = num_contact_points
+					N_lcp = np.zeros((n,p))
+					B_lcp = np.zeros((n,d*p))
+					E = np.zeros((p*d,p))
+					for i in range(p):
+						E[i*d:(i+1)*d,i] = np.ones((d,))
+
 					for i in obj_indices: 
 						obj = obj_list[i]
 						list_index = obj_indices.index(i)
@@ -498,20 +524,89 @@ class World(object):
 						N_lcp_i = np.transpose(Jvi) @ contact_normal
 						N_lcp[:,list_index] = N_lcp_i
 
-					tau_star = rhs + Dq @ dqdt
-					lcp_A1 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp)
-					lcp_q1 = np.transpose(N_lcp) @ np.linalg.inv(Dq) @ tau_star
-					# other friction terms will also come for now ignoring
-					lcp_A = np.zeros((2+num_contact_point,2+num_contact_point))
-					lcp_A[0:num_contact_point,0:num_contact_point] = lcp_A1
-					lcp_A[0+num_contact_point,0+num_contact_point] = 1
-					lcp_A[1+num_contact_point,1+num_contact_point] = 1
+						D_i = createBasisVector(contact_normal, contact_point, d)
+						B_lcp_i = np.transpose(Jvi) @ D_i
+						d = number_of_basis_vectors
+						B_lcp[:,d*list_index:d*(list_index+1)] = B_lcp_i
 
-					lcp_q = np.append(lcp_q1, [0, 0])
-					sol = lcp.lemkelcp(lcp_A,lcp_q)
-					fn = sol[0][0:num_contact_point] * (1+coef_rest)
-					val = dt* N_lcp @ fn
-					return np.reshape(val, (n,))
+					# print(np.transpose(B_lcp) @ dqdt)
+					# pdb.set_trace()
+					v_tangential = np.transpose(B_lcp)@dqdt 
+					ls = [abs(v)<1e-3 for v in v_tangential]
+					ans = True
+					for s in ls:
+						ans = ans or s
+
+					if ans == False:
+						tau_star = rhs + Dq @ dqdt
+						
+						lcp_A11 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp)
+						lcp_A12 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ B_lcp)
+						lcp_A13 = np.zeros((p, p))
+
+						lcp_A21 = dt* (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ N_lcp)
+						lcp_A22 = dt* (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ B_lcp)
+						# lcp_A22 = np.eye(p*d)
+						lcp_A23 = E
+
+						lcp_A31 = np.eye(p) * coef_fric
+						lcp_A32 = np.transpose(E)
+						lcp_A33 = np.zeros((p, p))
+
+						lcp_q1 = np.transpose(N_lcp) @ np.linalg.inv(Dq) @ tau_star
+						lcp_q2 = np.transpose(B_lcp) @ np.linalg.inv(Dq) @ tau_star
+						lcp_q3 = np.zeros((p,1))
+						# other friction terms will also come for now ignoring
+						dim = 2*p + p*d
+						lcp_A = np.zeros((dim,dim))
+						lcp_A[0:p,0:p] = lcp_A11
+						lcp_A[0:p,p:p+p*d] = lcp_A12
+						lcp_A[0:p,p+p*d:2*p+p*d] = lcp_A13
+
+						lcp_A[p:p+p*d,0:p] = lcp_A21
+						lcp_A[p:p+p*d,p:p+p*d] = lcp_A22
+						lcp_A[p:p+p*d,p+p*d:2*p+p*d] = lcp_A23
+
+						lcp_A[p+p*d:2*p+p*d,0:p] = lcp_A31
+						lcp_A[p+p*d:2*p+p*d,p:p+p*d] = lcp_A32
+						lcp_A[p+p*d:2*p+p*d,p+p*d:2*p+p*d] = lcp_A33
+
+
+						lcp_q = np.zeros((2*p+p*d,1))
+						lcp_q[0:p] = np.reshape(lcp_q1, (p,1))
+						lcp_q[p:p+p*d] = np.reshape(lcp_q2, (p*d,1))
+						lcp_q[p+p*d:2*p+p*d] = np.reshape(lcp_q3, (p,1))
+
+						sol = lcp.lemkelcp(lcp_A,lcp_q)
+						print(sol[2])
+						if sol[2] == 'Solution Found':
+							fn = sol[0][0:p] * (1+coef_rest)
+							fd = sol[0][p:p+p*d]
+							print('fd is ', fd)
+							val = dt* (N_lcp @ fn + B_lcp@fd)
+							# val = dt* (N_lcp @ fn)
+							# pdb.set_trace()
+							return np.reshape(val, (n,))
+						elif sol[2] == 'Secondary ray found':
+							# pdb.set_trace()
+							return np.zeros((n,))
+						else:
+							return np.zeros((n,))
+					else:
+						tau_star = rhs + Dq @ dqdt
+						lcp_A1 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp)
+						lcp_q1 = np.transpose(N_lcp) @ np.linalg.inv(Dq) @ tau_star
+						# other friction terms will also come for now ignoring
+						lcp_A = np.zeros((2+p,2+p))
+						lcp_A[0:p,0:p] = lcp_A1
+						lcp_A[0+p,0+p] = 1
+						lcp_A[1+p,1+p] = 1
+
+						lcp_q = np.append(lcp_q1, [0, 0])
+						sol = lcp.lemkelcp(lcp_A,lcp_q)
+						fn = sol[0][0:p] * (1+coef_rest)
+						val = dt* N_lcp @ fn
+						return np.reshape(val, (n,))
 
 				else:
 					return np.zeros((n,))
