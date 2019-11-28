@@ -50,8 +50,8 @@ obj_1.addChild(obj_2)
 
 # ground is the x-y plane
 # obj_list = [pobj_0]
-# obj_list = [pobj_0,pobj_1, obj_1, obj_2]
-obj_list = [pobj_0,pobj_1, obj_1]
+obj_list = [pobj_0,pobj_1, obj_1, obj_2]
+# obj_list = [pobj_0,pobj_1, obj_1]
 # obj_list = [pobj_0,pobj_1,pobj_2, obj_1, obj_2]
 # obj_list = [obj_1, obj_2]
 n = len(obj_list)
@@ -96,7 +96,7 @@ if __name__ == '__main__':
 	# collision = False
 	while True:
 		# world.advect(torque, dt)
-		world.advect1(torque, dt)
+		world.advect(torque, dt)
 		world.update()
 
 		# debug statemetns

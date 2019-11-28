@@ -452,8 +452,8 @@ class World(object):
 			self.d2qdt2[i] = obj_list[i].getD2q()
 
 		# q = np.array([0,0,np.pi/2], dtype=np.float32)
-		self.q = np.array([0,0,3*np.pi/4], dtype=np.float32)
-		# self.q = np.array([0,0,np.pi/2 - np.pi/8,2*np.pi/8], dtype=np.float32)
+		# self.q = np.array([0,0,3*np.pi/4], dtype=np.float32)
+		self.q = np.array([0,0,np.pi/2 - np.pi/8,2*np.pi/8], dtype=np.float32)
 		# self.q = np.array([0,0,np.pi/2 ,2*np.pi/8], dtype=np.float32)
 		# self.q = np.array([0,0,0 ,2*np.pi/8], dtype=np.float32)
 		# self.dqdt = np.array([0,0,1], dtype=np.float32)
@@ -474,7 +474,7 @@ class World(object):
 	def set_link_origin(self, origin):
 		self.origin = origin
 
-	def advect1(self, torque, dt):
+	def advect(self, torque, dt):
 		obj_list = self.obj_list
 		n = len(obj_list)
 
@@ -496,9 +496,16 @@ class World(object):
 
 		def collision_response():
 			coef_rest = 0.0
-			coef_fric = 1.0
+			# coef_fric = 0.001
+			# coef_fric = 1.19
+			coef_fric = 1.3
+			# because of numerics answer is slightly greater than 1
+			# otherwise optimal value for mu is 1.0
+
+			# don't make it zero numerical unstability
 			number_of_basis_vectors = 4
 			vel_diff = np.zeros((n,))
+			tau_star = rhs + Dq @ dqdt
 			if collision:
 				obj_indices, contact_points, contact_normals, point_affect_list = detectCollisions(obj_list)
 				if len(contact_points) > 0:
@@ -529,84 +536,57 @@ class World(object):
 						d = number_of_basis_vectors
 						B_lcp[:,d*list_index:d*(list_index+1)] = B_lcp_i
 
-					# print(np.transpose(B_lcp) @ dqdt)
-					# pdb.set_trace()
-					v_tangential = np.transpose(B_lcp)@dqdt 
-					ls = [abs(v)<1e-3 for v in v_tangential]
-					ans = True
-					for s in ls:
-						ans = ans or s
-
-					if ans == False:
-						tau_star = rhs + Dq @ dqdt
 						
-						lcp_A11 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp)
-						lcp_A12 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ B_lcp)
-						lcp_A13 = np.zeros((p, p))
+					lcp_A11 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp)
+					lcp_A12 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ B_lcp)
+					lcp_A13 = np.zeros((p, p))
 
-						lcp_A21 = dt* (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ N_lcp)
-						lcp_A22 = dt* (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ B_lcp)
-						# lcp_A22 = np.eye(p*d)
-						lcp_A23 = E
+					lcp_A21 = dt* (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ N_lcp)
+					lcp_A22 = dt* (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ B_lcp)
+					lcp_A23 = E
 
-						lcp_A31 = np.eye(p) * coef_fric
-						lcp_A32 = np.transpose(E)
-						lcp_A33 = np.zeros((p, p))
+					lcp_A31 = np.eye(p) * coef_fric
+					lcp_A32 = -np.transpose(E)
+					lcp_A33 = np.zeros((p, p))
 
-						lcp_q1 = np.transpose(N_lcp) @ np.linalg.inv(Dq) @ tau_star
-						lcp_q2 = np.transpose(B_lcp) @ np.linalg.inv(Dq) @ tau_star
-						lcp_q3 = np.zeros((p,1))
-						# other friction terms will also come for now ignoring
-						dim = 2*p + p*d
-						lcp_A = np.zeros((dim,dim))
-						lcp_A[0:p,0:p] = lcp_A11
-						lcp_A[0:p,p:p+p*d] = lcp_A12
-						lcp_A[0:p,p+p*d:2*p+p*d] = lcp_A13
+					lcp_q1 = np.transpose(N_lcp) @ np.linalg.inv(Dq) @ tau_star
+					lcp_q2 = np.transpose(B_lcp) @ np.linalg.inv(Dq) @ tau_star
+					lcp_q3 = np.zeros((p,1))
+					# other friction terms will also come for now ignoring
+					dim = 2*p + p*d
+					lcp_A = np.zeros((dim,dim))
+					lcp_A[0:p,0:p] = lcp_A11
+					lcp_A[0:p,p:p+p*d] = lcp_A12
+					lcp_A[0:p,p+p*d:2*p+p*d] = lcp_A13
 
-						lcp_A[p:p+p*d,0:p] = lcp_A21
-						lcp_A[p:p+p*d,p:p+p*d] = lcp_A22
-						lcp_A[p:p+p*d,p+p*d:2*p+p*d] = lcp_A23
+					lcp_A[p:p+p*d,0:p] = lcp_A21
+					lcp_A[p:p+p*d,p:p+p*d] = lcp_A22
+					lcp_A[p:p+p*d,p+p*d:2*p+p*d] = lcp_A23
 
-						lcp_A[p+p*d:2*p+p*d,0:p] = lcp_A31
-						lcp_A[p+p*d:2*p+p*d,p:p+p*d] = lcp_A32
-						lcp_A[p+p*d:2*p+p*d,p+p*d:2*p+p*d] = lcp_A33
+					lcp_A[p+p*d:2*p+p*d,0:p] = lcp_A31
+					lcp_A[p+p*d:2*p+p*d,p:p+p*d] = lcp_A32
+					lcp_A[p+p*d:2*p+p*d,p+p*d:2*p+p*d] = lcp_A33
 
 
-						lcp_q = np.zeros((2*p+p*d,1))
-						lcp_q[0:p] = np.reshape(lcp_q1, (p,1))
-						lcp_q[p:p+p*d] = np.reshape(lcp_q2, (p*d,1))
-						lcp_q[p+p*d:2*p+p*d] = np.reshape(lcp_q3, (p,1))
+					lcp_q = np.zeros((2*p+p*d,1))
+					lcp_q[0:p] = np.reshape(lcp_q1, (p,1))
+					lcp_q[p:p+p*d] = np.reshape(lcp_q2, (p*d,1))
+					lcp_q[p+p*d:2*p+p*d] = np.reshape(lcp_q3, (p,1))
 
-						sol = lcp.lemkelcp(lcp_A,lcp_q)
-						print(sol[2])
-						if sol[2] == 'Solution Found':
-							fn = sol[0][0:p] * (1+coef_rest)
-							fd = sol[0][p:p+p*d]
-							print('fd is ', fd)
-							val = dt* (N_lcp @ fn + B_lcp@fd)
-							# val = dt* (N_lcp @ fn)
-							# pdb.set_trace()
-							return np.reshape(val, (n,))
-						elif sol[2] == 'Secondary ray found':
-							# pdb.set_trace()
-							return np.zeros((n,))
-						else:
-							return np.zeros((n,))
-					else:
-						tau_star = rhs + Dq @ dqdt
-						lcp_A1 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp)
-						lcp_q1 = np.transpose(N_lcp) @ np.linalg.inv(Dq) @ tau_star
-						# other friction terms will also come for now ignoring
-						lcp_A = np.zeros((2+p,2+p))
-						lcp_A[0:p,0:p] = lcp_A1
-						lcp_A[0+p,0+p] = 1
-						lcp_A[1+p,1+p] = 1
+					sol = lcp.lemkelcp(lcp_A,lcp_q)
 
-						lcp_q = np.append(lcp_q1, [0, 0])
-						sol = lcp.lemkelcp(lcp_A,lcp_q)
+					print(sol[2])
+					if sol[2] == 'Solution Found':
 						fn = sol[0][0:p] * (1+coef_rest)
-						val = dt* N_lcp @ fn
+						fd = sol[0][p:p+p*d]
+						val = dt* (N_lcp @ fn + B_lcp@fd)
 						return np.reshape(val, (n,))
+					elif sol[2] == 'Secondary ray found':
+						# it is the detaching case where there is contact but the collision is moving apart
+						return np.zeros((n,))
+					else:
+						pdb.set_trace()
+						return np.zeros((n,))
 
 				else:
 					return np.zeros((n,))
@@ -639,128 +619,6 @@ class World(object):
 		print("t: ", np.array([t]), "rhs : ", rhs)
 		print()
 
-
-
-	def advect(self, torque, dt):
-		obj_list = self.obj_list
-		n = len(obj_list)
-
-		# assigning it like this makses a shallow copy
-		q = self.q.copy()
-		dqdt = self.dqdt.copy()
-		d2qdt2 = self.d2qdt2.copy()
-		collision = True
-		ke = 0
-		Dq =  evaluate_Dq(obj_list)
-		ke = (1/2) * np.transpose(dqdt) @ Dq @ dqdt
-		pe = evaluate_potential_energy(obj_list, self.gravity)
-		phi = evaluate_potential_energy_derivative(obj_list, self.gravity)
-		# create phi array as derivative of pe with qi's
-		Dq_derivative = evaluate_Dq_derivative(obj_list) # its is matrix of shape - nXnXn
-		C = createCArray(Dq_derivative, dqdt)
-		# create Mc matrix
-		rhs = torque - phi - C
-		d2qdt2 = np.linalg.solve(Dq, rhs)
-		
-		# best integerating system as of now now just add more 
-		# damping terms to kill of the motion rather than improving this further
-		q += dqdt*dt + 0.5 * dt*dt*d2qdt2
-		dqdt += d2qdt2*dt
-		# q += dqdt*dt
-	
-		self.q = q.copy()
-		self.dqdt = dqdt.copy()
-		self.d2qdt2 = d2qdt2.copy()
-		self.update()
-
-		vel_diff = np.zeros((n,))
-		if collision:
-			obj_indices, contact_points, contact_normals, point_affect_list = detectCollisions(obj_list)
-			if len(contact_points) > 0:
-				# collision is detected therefore apply collision constraints
-				m = n	
-				K = np.zeros((m,m))
-				coef_rest = 0.4
-				acc_diff = np.zeros((m,))
-				d2qdt2_end_effectors = calculate_joint_effector_accelerations(obj_list, d2qdt2)
-				for i in range(m): # for second dof
-					g_i = 1  # force/torque at ith joint
-					test_force = rhs.copy()
-					test_force[i] += g_i
-					d2qdt2_test = np.linalg.solve(Dq, test_force)
-					# apply this g_i force to calculate kij's
-					for j in range(m):
-						q_t = d2qdt2_test[j]
-						q_0 = d2qdt2[j]
-						k_ij = (q_t - q_0) / g_i
-						K[i,j] = k_ij
-
-					obj = obj_list[i]
-					# since I know for now point of contact is only 1
-					# TODO generalie this block
-					if i in obj_indices:
-						list_index = obj_indices.index(i)
-						contact_point = contact_points[list_index]
-						contact_normal = contact_normals[list_index]
-						point_affect = point_affect_list[list_index]
-						Jvi = evaluateJacobian(obj_list, i, point_affect)
-						Jci = evaluateJacobian(obj_list, i, -1)
-						# solve the constraint equation ---> using LCP
-						print("Collision of object index ", i , "with ground at this point ", contact_point)
-						print(point_affect)
-						print(Jvi @ dqdt)
-
-						impulse_lhs = np.transpose(contact_normal) @ Jvi @ dqdt
-						if impulse_lhs<0:
-							impulse_lhs = -(1+coef_rest)*impulse_lhs
-						else:
-							impulse_lhs = 0
-						impulse_rhs = np.transpose(contact_normal) @ Jvi @ np.linalg.inv(Dq) @ np.transpose(Jvi)
-						impulse = np.array([0,0,impulse_lhs/impulse_rhs[2]], dtype=np.float32)
-						# for inelastic collision with e
-						# pdb.set_trace()
-						vel_diff = np.linalg.solve(Dq, np.transpose(Jvi)@ impulse )
-						dqdt += vel_diff	
-						print(impulse)
-						print(vel_diff)
-						print('vel of com', Jci @ vel_diff)
-						# pdb.set_trace()
-
-						# acc_diff = vel_diff / dt
-						# f_generalized = np.linalg.solve(K,acc_diff)
-						# rhs_new = rhs.copy()
-						# rhs_new += f_generalized
-						# d2qdt2 = np.linalg.solve(Dq, rhs_new)
-					# new acceleration which will give this new velocity value
-
-
-		# q += dqdt*dt
-		# dqdt += d2qdt2*dt		
-		# self.q = q.copy()
-		self.dqdt = dqdt.copy()
-		# self.d2qdt2 = d2qdt2.copy()
-		# self.update()
-
-
-		t = self.t
-		self.t += dt
-
-		# print("t: ", np.array([t]), " q : ", q, "dqdt : " , dqdt, "d2qdt2 : ", d2qdt2, "rhs : ", rhs, "ke : ", np.array([ke]), "pe : ", np.array([pe]))
-		print("t: ", np.array([t]), "d2qdt2 : ", d2qdt2)
-		print("t: ", np.array([t]), "dqdt : ", dqdt)
-		self.update()
-		Jci = evaluateJacobian(obj_list, 2, -1)
-		Jvi = evaluateJacobian(obj_list, 2, 1)
-		print("t: ", np.array([t]), "com vel : ", Jci@dqdt)
-		print("t: ", np.array([t]), "end vel : ", Jvi@dqdt)
-		# print("t: ", np.array([t]), "q : ", q)
-		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
-		# # print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
-		# # print("t: ", np.array([t]), "C : ", C)	
-		print("t: ", np.array([t]), "Phi : ", phi)
-		print("t: ", np.array([t]), "rhs : ", rhs)
-		print()
-		# pdb.set_trace()
 
 	def update(self):
 		obj_list = self.obj_list
