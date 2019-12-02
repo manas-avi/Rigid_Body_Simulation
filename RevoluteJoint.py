@@ -60,10 +60,6 @@ class RevoluteJoint(object):
 		self.parent = None
 		self.child = []
 
-		# flags
-		self.Dq_flag = True
-
-
 	def get_rotation_matrix(self):
 		rotation_matrix = np.eye(4)
 		theta = self.q[0]

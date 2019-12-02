@@ -8,52 +8,49 @@ import World
 import matplotlib.pyplot as plt
 import pdb
 import lemkelcp as lcp
-# set options for now I am not considering the
-# world else this will be handled by the world
-
-# t_list=[]
-# # e_list=[]
-# q1_list=[]
-# q2_list=[]
 
 g = np.array([0,0,-10])
-# g = np.array([0,-10,0])
-# g = np.array([-10,0,0])
-# g = np.array([-1,-1,-1])
 # g = np.array([0,0,0])
 # same axis of rotation
-origin=np.array([4,4,2,4], dtype=np.float32)
+origin=np.array([4,4,12,4], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
 
 # pobj_0.addChild(pobj_1)
 
 
-pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
+pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 4,4,12, 4,4,12, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
 pobj_0.setMass(0)
 pobj_0.showText = True
-pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
+pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 4,4,12, 4,4,12, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
 pobj_1.setMass(0)
-# pobj_2 = PrismaticJoint.PrismaticJoint('pobj_2', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
-# pobj_2.setMass(0)
 pobj_0.addChild(pobj_1)
-# pobj_1.addChild(pobj_2)
 
-obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=0,z_length=0, color="pink")
-# obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=np.pi/2,z_length=0, color="violet")
-obj_1.showText = True
-pobj_1.addChild(obj_1)
+lobj_1 = RevoluteJoint.RevoluteJoint('lobj_1', 4,4,12, 8,4,12, x_length=4, x_alpha=0,z_length=0, color="pink")
+lobj_1.showText = True
+pobj_1.addChild(lobj_1)
 
-obj_2 = RevoluteJoint.RevoluteJoint('obj_2', 6,4,1, 8,4,1, x_length=2, x_alpha=0,z_length=0, color="cyan")
-obj_2.showText = True
-obj_1.addChild(obj_2)
+lobj_2 = RevoluteJoint.RevoluteJoint('lobj_2', 8,4,12, 12,4,12, x_length=4, x_alpha=0,z_length=0, color="cyan")
+lobj_2.showText = True
+lobj_1.addChild(lobj_2)
 
+lobj_3 = RevoluteJoint.RevoluteJoint('lobj_3', 12,4,12, 14,4,12, x_length=2, x_alpha=0,z_length=0, color="orange")
+lobj_3.showText = True
+lobj_2.addChild(lobj_3)
+
+robj_1 = RevoluteJoint.RevoluteJoint('robj_1', 4,4,12, 8,4,12, x_length=4, x_alpha=0,z_length=0, color="pink")
+robj_1.showText = True
+pobj_1.addChild(robj_1)
+
+robj_2 = RevoluteJoint.RevoluteJoint('robj_2', 8,4,12, 12,4,12, x_length=4, x_alpha=0,z_length=0, color="cyan")
+robj_2.showText = True
+robj_1.addChild(robj_2)
+
+robj_3 = RevoluteJoint.RevoluteJoint('robj_3', 12,4,12, 14,4,12, x_length=2, x_alpha=0,z_length=0, color="orange")
+robj_3.showText = True
+robj_2.addChild(robj_3)
 
 # ground is the x-y plane
-# obj_list = [pobj_0]
-obj_list = [pobj_0,pobj_1, obj_1, obj_2]
-# obj_list = [pobj_0,pobj_1, obj_1]
-# obj_list = [pobj_0,pobj_1,pobj_2, obj_1, obj_2]
-# obj_list = [obj_1, obj_2]
+obj_list = [pobj_0,pobj_1, lobj_1, lobj_2, lobj_3, robj_1, robj_2, robj_3]
 n = len(obj_list)
 
 # set Axis for all the joints ----
@@ -85,19 +82,28 @@ for i in range(n):
 if __name__ == '__main__':
 	dt = 0.01
 	world = World.World(obj_list)
+	world.setQ(np.array([0,0,np.pi-np.pi/8,0, 0, np.pi+np.pi/8,0, 0], dtype=np.float32))
+	# world.setQ(np.array([0,0,np.pi/2 +3* np.pi/8 ,np.pi/16, -np.pi/8], dtype=np.float32))
+	# world.setQ(np.array([0,0,np.pi/2 + np.pi/8,np.pi/8, -np.pi/8, -np.pi/8], dtype=np.float32))
 	world.set_link_origin(origin)
 	world.set_gravity(g)
-	world.setQ(np.array([0,0,np.pi/2 - np.pi/8,2*np.pi/8], dtype=np.float32))
 
 	# t_list=[]
 	# e_list=[]
 	# q_list=[]
 
+	on_ground = False
+
 	collision = True
 	# collision = False
 	while True:
+
+		# DO some inverse kinetics here.............
 		# world.advect(torque, dt)
-		world.advect(torque, dt)
+		# if on_ground:
+		# 	torque[-1] = 1
+		on_ground = world.advect(torque, dt)
+		# print(on_ground)
 		world.update()
 
 		# debug statemetns
@@ -118,11 +124,3 @@ if __name__ == '__main__':
 # plt.plot(t_list, q2_list, color='b')
 # plt.show()
 
-# Notes --------------------------------
-
-# this is for revolute joint change at this point for prismatic joint
-# there is some problem with this one
-# since this value is dependent on theta which is quadratically integerated
-# thus its value depend on how small dt is
-# thus not giving an exact answer since area intergerated is not correct.
-# since get transformation matrix depends on the value of current theta
