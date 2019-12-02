@@ -33,15 +33,16 @@ pobj_0.setMass(0)
 pobj_0.showText = True
 pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
 pobj_1.setMass(0)
-# pobj_2 = PrismaticJoint.PrismaticJoint('pobj_2', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
-# pobj_2.setMass(0)
+pobj_2 = PrismaticJoint.PrismaticJoint('pobj_2', 4,4,1, 4,4,1, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="green")
+pobj_2.setMass(0)
 pobj_0.addChild(pobj_1)
-# pobj_1.addChild(pobj_2)
+pobj_1.addChild(pobj_2)
 
-obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=0,z_length=0, color="pink")
-# obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=np.pi/2,z_length=0, color="violet")
+# obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=0,z_length=0, color="pink")
+obj_1 = RevoluteJoint.RevoluteJoint('obj_1', 4,4,1, 6,4,1, x_length=2, x_alpha=np.pi/2,z_length=0, color="violet")
 obj_1.showText = True
-pobj_1.addChild(obj_1)
+# pobj_1.addChild(obj_1)
+pobj_2.addChild(obj_1)
 
 obj_2 = RevoluteJoint.RevoluteJoint('obj_2', 6,4,1, 8,4,1, x_length=2, x_alpha=0,z_length=0, color="cyan")
 obj_2.showText = True
@@ -50,9 +51,9 @@ obj_1.addChild(obj_2)
 
 # ground is the x-y plane
 # obj_list = [pobj_0]
-obj_list = [pobj_0,pobj_1, obj_1, obj_2]
+# obj_list = [pobj_0,pobj_1, obj_1, obj_2]
 # obj_list = [pobj_0,pobj_1, obj_1]
-# obj_list = [pobj_0,pobj_1,pobj_2, obj_1, obj_2]
+obj_list = [pobj_0,pobj_1,pobj_2, obj_1, obj_2]
 # obj_list = [obj_1, obj_2]
 n = len(obj_list)
 

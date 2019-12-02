@@ -453,10 +453,10 @@ class World(object):
 
 		# q = np.array([0,0,np.pi/2], dtype=np.float32)
 		# self.q = np.array([0,0,3*np.pi/4], dtype=np.float32)
-		self.q = np.array([0,0,np.pi/2 - np.pi/8,2*np.pi/8], dtype=np.float32)
+		# self.q = np.array([0,0,np.pi/2 - np.pi/8,2*np.pi/8], dtype=np.float32)
 		# self.q = np.array([0,0,np.pi/2 ,2*np.pi/8], dtype=np.float32)
 		# self.q = np.array([0,0,0 ,2*np.pi/8], dtype=np.float32)
-		# self.dqdt = np.array([0,0,1], dtype=np.float32)
+		# self.dqdt = np.array([1,1,1, 1, 1], dtype=np.float32)
 		# self.dqdt = np.array([0,0,0,1], dtype=np.float32)
 		# dqdt = np.array([2,0,1,0], dtype=np.float32)
 
@@ -498,7 +498,7 @@ class World(object):
 			coef_rest = 0.0
 			# coef_fric = 0.001
 			# coef_fric = 1.19
-			coef_fric = 1.3
+			coef_fric = 1.4
 			# because of numerics answer is slightly greater than 1
 			# otherwise optimal value for mu is 1.0
 
