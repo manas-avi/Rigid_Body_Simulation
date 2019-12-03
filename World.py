@@ -253,8 +253,6 @@ def evaluate_Dq_derivative(obj_list):
 		R_list=[]
 		dR_list=[]
 
-		k_list = get_index_list(obj_list, k)
-
 		for i in range(n):
 			R_list.append(np.eye(3))
 			dR_list.append(np.eye(3))
@@ -329,7 +327,7 @@ def evaluate_Dq_derivative(obj_list):
 					else:
 						dJvi[:,j] = np.zeros((3))
 
-			# if k==2:
+			# if k==2 or k==4:
 			# 	pdb.set_trace()
 			C[:,:,k] += mi * (np.transpose(Jvi) @ dJvi + np.transpose(dJvi) @ Jvi)
 			# Dq += mi* (np.transpose(Jvi) @ Jvi)
@@ -351,7 +349,7 @@ def evaluate_Dq_derivative(obj_list):
 					Jwi[:,j] = z_axis_list[j]
 					dJwi[:,j] = dz_axis_list[j]
 
-			if k<=i:
+			if k<=i and k in i_list:
 				C[:,:,k] += \
 				(np.transpose(Jwi) @ Rdi @ Ii @ np.transpose(Ri) @ Jwi) + \
 				(np.transpose(Jwi) @ Ri @ Ii @ np.transpose(Rdi) @ Jwi) 
@@ -555,7 +553,7 @@ class World(object):
 			coef_rest = 0.0
 			# coef_fric = 0.001
 			# coef_fric = 1.19
-			coef_fric = 1.1
+			coef_fric = 3
 			# because of numerics answer is slightly greater than 1
 			# otherwise optimal value for mu is 1.0
 
@@ -666,13 +664,13 @@ class World(object):
 		# print("t: ", np.array([t]), "com vel : ", Jci@dqdt)
 		# print("t: ", np.array([t]), "end vel : ", Jvi@dqdt)
 		print("t: ", np.array([t]), "q : ", q)
-		# print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
 		# print("t: ", np.array([t]), "pe : ", np.array([pe]))
 		# print("t: ", np.array([t]), "ke : ", np.array([ke]))
 		print("t: ", np.array([t]), "C : ", C)	
+		# print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
 		# print("t: ", np.array([t]), "Dq_2 : \n", Dq_derivative[:,:,2])	
-		# print("t: ", np.array([t]), "Dq_3 : \n", Dq_derivative[:,:,3])	
+		# print("t: ", np.array([t]), "Dq_4 : \n", Dq_derivative[:,:,4])	
 		print("t: ", np.array([t]), "Phi : ", phi)
 		# print("t: ", np.array([t]), "rhs : ", rhs)
 		print()

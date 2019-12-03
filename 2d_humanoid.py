@@ -9,50 +9,50 @@ import matplotlib.pyplot as plt
 import pdb
 import lemkelcp as lcp
 
-# g = np.array([0,0,-10])
-g = np.array([0,0,0])
+g = np.array([0,0,-10])
+# g = np.array([0,0,0])
 # same axis of rotation
-origin=np.array([6,4,9,4], dtype=np.float32)
+origin=np.array([6,4,12,4], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
 
 # pobj_0.addChild(pobj_1)
 
 
-pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 6,4,9, 6,4,9, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
+pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 6,4,12, 6,4,12, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
 pobj_0.setMass(0)
 pobj_0.showText = True
-pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 6,4,9, 6,4,9, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
+pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 6,4,12, 6,4,12, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
 pobj_1.setMass(0)
 pobj_0.addChild(pobj_1)
 
-lobj_1 = RevoluteJoint.RevoluteJoint('lobj_1', 6,4,9, 10,4,9, x_length=4, x_alpha=0,z_length=0, color="pink")
+lobj_1 = RevoluteJoint.RevoluteJoint('lobj_1', 6,4,12, 10,4,12, x_length=4, x_alpha=0,z_length=0, color="pink")
 lobj_1.showText = True
 pobj_1.addChild(lobj_1)
 
-lobj_2 = RevoluteJoint.RevoluteJoint('lobj_2', 10,4,9, 14,4,9, x_length=4, x_alpha=0,z_length=0, color="cyan")
+lobj_2 = RevoluteJoint.RevoluteJoint('lobj_2', 10,4,12, 14,4,12, x_length=4, x_alpha=0,z_length=0, color="cyan")
 lobj_2.showText = True
 lobj_1.addChild(lobj_2)
 
-lobj_3 = RevoluteJoint.RevoluteJoint('lobj_3', 14,4,9, 16,4,9, x_length=2, x_alpha=0,z_length=0, color="orange")
+lobj_3 = RevoluteJoint.RevoluteJoint('lobj_3', 14,4,12, 16,4,12, x_length=2, x_alpha=0,z_length=0, color="orange")
 lobj_3.showText = True
 lobj_2.addChild(lobj_3)
 
-robj_1 = RevoluteJoint.RevoluteJoint('robj_1', 6,4,9, 10,4,9, x_length=4, x_alpha=0,z_length=0, color="pink")
+robj_1 = RevoluteJoint.RevoluteJoint('robj_1', 6,4,12, 10,4,12, x_length=4, x_alpha=0,z_length=0, color="pink")
 robj_1.showText = True
 pobj_1.addChild(robj_1)
 
-robj_2 = RevoluteJoint.RevoluteJoint('robj_2', 10,4,9, 14,4,9, x_length=4, x_alpha=0,z_length=0, color="cyan")
+robj_2 = RevoluteJoint.RevoluteJoint('robj_2', 10,4,12, 14,4,12, x_length=4, x_alpha=0,z_length=0, color="cyan")
 robj_2.showText = True
 robj_1.addChild(robj_2)
 
-robj_3 = RevoluteJoint.RevoluteJoint('robj_3', 14,4,9, 16,4,9, x_length=2, x_alpha=0,z_length=0, color="orange")
+robj_3 = RevoluteJoint.RevoluteJoint('robj_3', 14,4,12, 16,4,12, x_length=2, x_alpha=0,z_length=0, color="orange")
 robj_3.showText = True
 robj_2.addChild(robj_3)
 
 # ground is the x-y plane
 # obj_list = [pobj_0,pobj_1, lobj_1, lobj_2, lobj_3]
-obj_list = [pobj_0,pobj_1, lobj_1, lobj_2, robj_1, robj_2]
-# obj_list = [pobj_0,pobj_1, lobj_1, lobj_2, lobj_3, robj_1, robj_2, robj_3]
+# obj_list = [pobj_0,pobj_1, lobj_1, lobj_2, robj_1, robj_2]
+obj_list = [pobj_0,pobj_1, lobj_1, lobj_2, lobj_3, robj_1, robj_2, robj_3]
 n = len(obj_list)
 
 # set Axis for all the joints ----
@@ -85,13 +85,14 @@ if __name__ == '__main__':
 	dt = 0.01
 	world = World.World(obj_list)
 	# world.setQ(np.array([0,0,np.pi,0, 0, ], dtype=np.float32))
-	world.setQ(np.array([0,0,np.pi-np.pi/8,0, np.pi+np.pi/8,0], dtype=np.float32))
-	# world.setQ(np.array([0,0,np.pi-np.pi/8,0, 0, np.pi+np.pi/8,0, 0], dtype=np.float32))
+	# world.setQ(np.array([0,0,np.pi-np.pi/8,0, np.pi+np.pi/8,0], dtype=np.float32))
+	world.setQ(np.array([0,0,np.pi-np.pi/8,0, np.pi/8, np.pi+np.pi/8,0, -np.pi/8], dtype=np.float32))
 	# world.setQ(np.array([0,0,np.pi/2 +3* np.pi/8 ,np.pi/16, -np.pi/8], dtype=np.float32))
 	# world.setQ(np.array([0,0,np.pi/2 + np.pi/8,np.pi/8, -np.pi/8, -np.pi/8], dtype=np.float32))
 	# world.setdqdt(np.array([1,5,1,1,1], dtype=np.float32))
-	world.setdqdt(np.array([0,0,1,-1,1,-1], dtype=np.float32))
-	# world.setdqdt(np.array([0,0,0,0,0,0,0,0], dtype=np.float32))
+	# world.setdqdt(np.array([0,0,1,-1,-1,1], dtype=np.float32))
+	# world.setdqdt(np.array([0,0,-1,1,-1,1,-1,1], dtype=np.float32))
+	# world.setdqdt(np.array([0,0,1,-1,1,-1,1,-1], dtype=np.float32))
 
 	world.set_link_origin(origin)
 	world.set_gravity(g)
@@ -105,9 +106,11 @@ if __name__ == '__main__':
 
 		# DO some inverse kinetics here.............
 		# world.advect(torque, dt)
-		# if on_ground:
 		# 	torque[-1] = 1
-		on_ground = world.advect(torque, dt)
+		if on_ground:
+			on_ground = world.advect(torque, dt/4)
+		else:
+			on_ground = world.advect(torque, dt)
 		# print(on_ground)
 		world.update()
 
