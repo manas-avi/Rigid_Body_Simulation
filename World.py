@@ -224,8 +224,11 @@ def evaluate_Dq_derivative(obj_list):
 		
 		# compute gradient of z_axis with respect to the derivative of k
 
-		dz_axis_list = [np.array([0,0,0])]
-		z_axis_list = [np.array([0,0,1])]
+		# dz_axis_list = [np.array([0,0,0])]
+		# z_axis_list = [np.array([0,0,1])]
+
+		dz_axis_list = []
+		z_axis_list = []		
 
 		R_list=[]
 		dR_list=[]
@@ -301,6 +304,8 @@ def evaluate_Dq_derivative(obj_list):
 					else:
 						dJvi[:,j] = np.zeros((3))
 
+			# if k==2:
+			# 	pdb.set_trace()
 			C[:,:,k] += mi * (np.transpose(Jvi) @ dJvi + np.transpose(dJvi) @ Jvi)
 			# Dq += mi* (np.transpose(Jvi) @ Jvi)
 
@@ -463,9 +468,9 @@ class World(object):
 		plt.ion()
 		self.fig = plt.figure()
 		self.ax = plt.gca(projection="3d")
-		self.ax.set_xlim(0,10)
-		self.ax.set_ylim(0,10)
-		self.ax.set_zlim(0,10)
+		self.ax.set_xlim(0,15)
+		self.ax.set_ylim(0,15)
+		self.ax.set_zlim(0,15)
 		self.fig.canvas.mpl_connect("close_event", lambda event: exit())
 		self.origin = np.array([0,0,0,1])
 		n = len(obj_list)
@@ -487,7 +492,8 @@ class World(object):
 		# self.q = np.array([0,0,np.pi/2 ,2*np.pi/8], dtype=np.float32)
 		# self.q = np.array([0,0,0 ,2*np.pi/8], dtype=np.float32)
 		# self.dqdt = np.array([0,0,1], dtype=np.float32)
-		# self.dqdt = np.array([0,0,0,1], dtype=np.float32)
+		# self.dqdt = np.array([1,1,1,1], dtype=np.float32)
+		# self.dqdt = np.array([1,1,1,1,1,1,1,1], dtype=np.float32)
 		# dqdt = np.array([2,0,1,0], dtype=np.float32)
 
 		for i in range(n):
@@ -510,6 +516,12 @@ class World(object):
 		for i in range(n):
 			self.obj_list[i].setQ(self.q[i] )
 
+	def setdqdt(self, dqdt):
+		self.dqdt = dqdt
+		n = len(self.obj_list)
+		for i in range(n):
+			self.obj_list[i].setDq(self.dqdt[i])
+
 	def advect(self, torque, dt):
 		on_ground = False
 		obj_list = self.obj_list
@@ -518,7 +530,7 @@ class World(object):
 		# assigning it like this makses a shallow copy
 		q = self.q.copy()
 		dqdt = self.dqdt.copy()
-		collision = True
+		collision = False
 		ke = 0
 		Dq =  evaluate_Dq(obj_list)
 		ke = (1/2) * np.transpose(dqdt) @ Dq @ dqdt
@@ -527,7 +539,7 @@ class World(object):
 		# create phi array as derivative of pe with qi's
 		Dq_derivative = evaluate_Dq_derivative(obj_list) # its is matrix of shape - nXnXn
 		C = createCArray(Dq_derivative, dqdt)
-		# create Mc matrix
+
 		rhs = torque - phi - C
 		rhs = rhs * dt
 
@@ -622,7 +634,7 @@ class World(object):
 						# it is the detaching case where there is contact but the collision is moving apart
 						return np.zeros((n,)), True
 					else:
-						pdb.set_trace()
+						# pdb.set_trace()
 						return np.zeros((n,)), True
 
 				else:
@@ -648,14 +660,16 @@ class World(object):
 		# Jvi = evaluateJacobian(obj_list, 2, 1)
 		# print("t: ", np.array([t]), "com vel : ", Jci@dqdt)
 		# print("t: ", np.array([t]), "end vel : ", Jvi@dqdt)
-		# print("t: ", np.array([t]), "q : ", q)
+		print("t: ", np.array([t]), "q : ", q)
+		print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
-		print("t: ", np.array([t]), "pe : ", np.array([pe]))
-		print("t: ", np.array([t]), "ke : ", np.array([ke]))
-		# # print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
-		# # print("t: ", np.array([t]), "C : ", C)	
-		print("t: ", np.array([t]), "Phi : ", phi)
-		print("t: ", np.array([t]), "rhs : ", rhs)
+		# print("t: ", np.array([t]), "pe : ", np.array([pe]))
+		# print("t: ", np.array([t]), "ke : ", np.array([ke]))
+		print("t: ", np.array([t]), "C : ", C)	
+		print("t: ", np.array([t]), "Dq_2 : \n", Dq_derivative[:,:,2])	
+		# print("t: ", np.array([t]), "Dq_3 : \n", Dq_derivative[:,:,3])	
+		# print("t: ", np.array([t]), "Phi : ", phi)
+		# print("t: ", np.array([t]), "rhs : ", rhs)
 		print()
 
 		return on_ground
@@ -736,13 +750,13 @@ class World(object):
 		# self.ax.plot( [Oc[0]] ,[Oc[1]], [Oc[2]], marker = '*', color='red')
 
 		# draw ground at xy plane
-		xx, yy = np.meshgrid(range(0,11,10), range(0,11,10))
+		xx, yy = np.meshgrid(range(0,16,15), range(0,16,15))
 		zz = xx * 0
 		self.ax.plot_surface(xx, yy, zz, alpha=0.2, color='black')
 
 		# draw axis ->
 		axis_x, axis_y, axis_z = np.zeros((3,3))
-		axis_length = 10
+		axis_length = 15
 		axis_u, axis_v, axis_w = np.array([[axis_length*1,0,0],[0,axis_length*1,0],[0,0,axis_length*1]])
 		self.ax.quiver(axis_x,axis_y,axis_z,axis_u,axis_v,axis_w,arrow_length_ratio=0.1)
 

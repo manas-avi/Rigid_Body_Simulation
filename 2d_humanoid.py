@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import pdb
 import lemkelcp as lcp
 
-g = np.array([0,0,-10])
-# g = np.array([0,0,0])
+# g = np.array([0,0,-10])
+g = np.array([0,0,0])
 # same axis of rotation
 origin=np.array([4,4,12,4], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
@@ -50,7 +50,8 @@ robj_3.showText = True
 robj_2.addChild(robj_3)
 
 # ground is the x-y plane
-obj_list = [pobj_0,pobj_1, lobj_1, lobj_2, lobj_3, robj_1, robj_2, robj_3]
+obj_list = [pobj_0,pobj_1, lobj_1, lobj_2, lobj_3]
+# obj_list = [pobj_0,pobj_1, lobj_1, lobj_2, lobj_3, robj_1, robj_2, robj_3]
 n = len(obj_list)
 
 # set Axis for all the joints ----
@@ -82,9 +83,13 @@ for i in range(n):
 if __name__ == '__main__':
 	dt = 0.01
 	world = World.World(obj_list)
-	world.setQ(np.array([0,0,np.pi-np.pi/8,0, 0, np.pi+np.pi/8,0, 0], dtype=np.float32))
+	world.setQ(np.array([0,0,np.pi,0, 0, ], dtype=np.float32))
+	# world.setQ(np.array([0,0,np.pi-np.pi/8,0, 0, np.pi+np.pi/8,0, 0], dtype=np.float32))
 	# world.setQ(np.array([0,0,np.pi/2 +3* np.pi/8 ,np.pi/16, -np.pi/8], dtype=np.float32))
 	# world.setQ(np.array([0,0,np.pi/2 + np.pi/8,np.pi/8, -np.pi/8, -np.pi/8], dtype=np.float32))
+	world.setdqdt(np.array([0,5,1,0,0], dtype=np.float32))
+	# world.setdqdt(np.array([0,0,1,0,0,0,0,0], dtype=np.float32))
+
 	world.set_link_origin(origin)
 	world.set_gravity(g)
 

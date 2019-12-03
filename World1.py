@@ -215,18 +215,6 @@ def evaluate_Dq_derivative(obj_list):
 
 		
 		for obj_index in range(n):
-			# check if k is in the same chain before i
-			# if yes then something will happend
-			# else continue 
-			i_chain = []
-			node = obj_list[obj_index]
-			while not node is None:
-				i_chain.append(node.getIndex())
-				node = node.parent
-			if k not in i_chain:
-				print(k, i_chain)
-				break
-
 			# this loops for different object Jvi that contribute to the Dq nXn matrix
 			mi = obj_list[obj_index].getMass()
 			Jvi = np.zeros((3,n))
@@ -468,7 +456,7 @@ class World1(object):
 		self.q = np.array([0,0,np.pi/2 - np.pi/8,2*np.pi/8], dtype=np.float32)
 		# self.q = np.array([0,0,np.pi/2 ,2*np.pi/8], dtype=np.float32)
 		# self.q = np.array([0,0,0 ,2*np.pi/8], dtype=np.float32)
-		# self.dqdt = np.array([1,1,-1,0], dtype=np.float32)
+		self.dqdt = np.array([0,0,0,1], dtype=np.float32)
 		# self.dqdt = np.array([0,0,0,1], dtype=np.float32)
 		# dqdt = np.array([2,0,1,0], dtype=np.float32)
 
@@ -493,7 +481,7 @@ class World1(object):
 		# assigning it like this makses a shallow copy
 		q = self.q.copy()
 		dqdt = self.dqdt.copy()
-		collision = True
+		collision = False
 		ke = 0
 		Dq =  evaluate_Dq(obj_list)
 		ke = (1/2) * np.transpose(dqdt) @ Dq @ dqdt
@@ -627,7 +615,7 @@ class World1(object):
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
 		print("t: ", np.array([t]), "pe : ", np.array([pe]))
 		print("t: ", np.array([t]), "ke : ", np.array([ke]))
-		# # print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
+		print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
 		# # print("t: ", np.array([t]), "C : ", C)	
 		print("t: ", np.array([t]), "Phi : ", phi)
 		print("t: ", np.array([t]), "rhs : ", rhs)
