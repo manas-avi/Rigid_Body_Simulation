@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import pdb
 import lemkelcp as lcp
 
-g = np.array([0,0,-10])
-# g = np.array([0,0,0])
+# g = np.array([0,0,-10])
+g = np.array([0,0,0])
 # same axis of rotation
 origin=np.array([6,4,9,4], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
@@ -90,7 +90,7 @@ if __name__ == '__main__':
 	# world.setQ(np.array([0,0,np.pi/2 +3* np.pi/8 ,np.pi/16, -np.pi/8], dtype=np.float32))
 	# world.setQ(np.array([0,0,np.pi/2 + np.pi/8,np.pi/8, -np.pi/8, -np.pi/8], dtype=np.float32))
 	# world.setdqdt(np.array([1,5,1,1,1], dtype=np.float32))
-	world.setdqdt(np.array([0,0,0,0,0,0], dtype=np.float32))
+	world.setdqdt(np.array([0,0,1,-1,1,-1], dtype=np.float32))
 	# world.setdqdt(np.array([0,0,0,0,0,0,0,0], dtype=np.float32))
 
 	world.set_link_origin(origin)
