@@ -530,7 +530,7 @@ class World(object):
 		# assigning it like this makses a shallow copy
 		q = self.q.copy()
 		dqdt = self.dqdt.copy()
-		collision = False
+		collision = True
 		ke = 0
 		Dq =  evaluate_Dq(obj_list)
 		ke = (1/2) * np.transpose(dqdt) @ Dq @ dqdt
@@ -661,12 +661,12 @@ class World(object):
 		# print("t: ", np.array([t]), "com vel : ", Jci@dqdt)
 		# print("t: ", np.array([t]), "end vel : ", Jvi@dqdt)
 		print("t: ", np.array([t]), "q : ", q)
-		print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
+		# print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
 		# print("t: ", np.array([t]), "pe : ", np.array([pe]))
 		# print("t: ", np.array([t]), "ke : ", np.array([ke]))
 		print("t: ", np.array([t]), "C : ", C)	
-		print("t: ", np.array([t]), "Dq_2 : \n", Dq_derivative[:,:,2])	
+		# print("t: ", np.array([t]), "Dq_2 : \n", Dq_derivative[:,:,2])	
 		# print("t: ", np.array([t]), "Dq_3 : \n", Dq_derivative[:,:,3])	
 		# print("t: ", np.array([t]), "Phi : ", phi)
 		# print("t: ", np.array([t]), "rhs : ", rhs)
