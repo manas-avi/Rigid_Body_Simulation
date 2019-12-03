@@ -4,7 +4,7 @@ from matplotlib.collections import PatchCollection
 import numpy as np
 import RevoluteJoint
 import PrismaticJoint
-import World1
+import World
 import matplotlib.pyplot as plt
 import pdb
 import lemkelcp as lcp
@@ -16,8 +16,8 @@ import lemkelcp as lcp
 # q1_list=[]
 # q2_list=[]
 
-# g = np.array([0,0,-10])
-g = np.array([0,0,0])
+g = np.array([0,0,-10])
+# g = np.array([0,0,0])
 
 # same axis of rotation
 origin=np.array([4,4,2,4], dtype=np.float32)
@@ -81,11 +81,12 @@ for i in range(n):
 
 
 if __name__ == '__main__':
-	dt = 0.01/2
-	world = World1.World1(obj_list)
+	dt = 0.01
+	world = World.World(obj_list)
 	world.set_link_origin(origin)
 	world.set_gravity(g)
-	# world.setQ(np.array([0,0,np.pi/2 - np.pi/8,2*np.pi/8], dtype=np.float32))
+	world.setQ(np.array([0,0,np.pi/2 - np.pi/8,2*np.pi/8], dtype=np.float32))
+	# world.setdqdt(np.array([10,0,1,1], dtype=np.float32))
 
 	# t_list=[]
 	# e_list=[]

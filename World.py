@@ -109,10 +109,8 @@ def evaluate_potential_energy_derivative(obj_list, g):
 	phi = np.zeros((n,))
 
 	O = get_origin_coordinates(obj_list)
-
 	# check if parent will come here nor not.......
 	rci_list = get_com_coordinates(obj_list)
-
 	# remember derivative will come only when part of the same chain
 	for i in range(n):
 		mi = obj_list[i].getMass()
@@ -123,25 +121,32 @@ def evaluate_potential_energy_derivative(obj_list, g):
 				Zkm1 = np.array([0,0,1])
 			else:	
 				Zkm1 = obj_list[k].parent.z_axis
+
+			# k's parent index is different
+			if k>0:
+				kp_index = obj_list[k].parent.getIndex() + 1
+			else:
+				kp_index = 0
+
 			if obj_list[k].type == 'PrismaticJoint':
 				phi[k] -= mi * (np.transpose(g) @ Zkm1)
 			elif obj_list[k].type == 'RevoluteJoint':				
-				phi[k] -= mi * (np.transpose(g) @ np.cross( Zkm1 , (rci - O[k]) ))
+				phi[k] -= mi * (np.transpose(g) @ np.cross( Zkm1 , (rci - O[kp_index]) ))
 	return phi
 
 def evaluateJacobian(obj_list, index, point_affect):
 	# index is the end point of obj_list[index] at which we are computing the jacobian
-
-	# TODO check the functionality
-
 	# store Oi values for all the link
 	n=len(obj_list)
 	O = get_origin_coordinates(obj_list)
+	# 0th coordinate is origin which is zero
 
 	i = index
 	p_index = obj_list[index].parent.getIndex()
 	mi = obj_list[i].getMass()
 	Jvi = np.zeros((3,n))
+
+	i_list = get_index_list(obj_list, i)
 
 	if point_affect==1:
 		Oci = O[i+1] #it has to be the end effector and not the mid-point
@@ -150,15 +155,22 @@ def evaluateJacobian(obj_list, index, point_affect):
 	else:
 		Oci = (O[p_index+1] + O[i+1]) / 2 # it has to be the mid-point as every point is touching
 
-	for j in range(i+1):
+	for j in i_list:
 		if j==0:
 			Zjm1 = np.array([0,0,1])
 		else:	
 			Zjm1 = obj_list[j].parent.z_axis
+		
+		# j's parent index is different
+		if j>0:
+			jp_index = obj_list[j].parent.getIndex() + 1
+		else:
+			jp_index = 0
+
 		if obj_list[j].type == 'PrismaticJoint':
 			Jvi[:,j] = Zjm1
 		elif obj_list[j].type == 'RevoluteJoint':
-			Jvi[:,j] = np.cross(Zjm1, (Oci - O[j]))
+			Jvi[:,j] = np.cross(Zjm1, (Oci - O[jp_index]))
 	return Jvi
 
 def evaluate_Dq(obj_list):
@@ -182,15 +194,21 @@ def evaluate_Dq(obj_list):
 				Zjm1 = np.array([0,0,1])
 			else:	
 				Zjm1 = obj_list[j].parent.z_axis
+
+			# j's parent index is different
+			if j>0:
+				jp_index = obj_list[j].parent.getIndex() + 1
+			else:
+				jp_index = 0
+
 			if obj_list[j].type == 'PrismaticJoint':
 				Jvi[:,j] = Zjm1
 			elif obj_list[j].type == 'RevoluteJoint':
-				Jvi[:,j] = np.cross(Zjm1, (Oci - O[j]))
+				Jvi[:,j] = np.cross(Zjm1, (Oci - O[jp_index]))
 		Dq += mi* (np.transpose(Jvi) @ Jvi)
 
 		# RE part -----------------
 		Ii = obj_list[i].Ic
-		# CHECK IF IT IS CORRECT OR NOT
 		Ri = Ri @ obj_list[i].get_rotation_matrix()[0:3,0:3]	
 		Jwi = np.zeros((3,n))
 		for j in i_list:
@@ -222,11 +240,13 @@ def evaluate_Dq_derivative(obj_list):
 		else:	
 			Zkm1 = obj_list[k].parent.z_axis
 		
+		# k's parent index is different
+		if k>0:
+			kp_index = obj_list[k].parent.getIndex() + 1
+		else:
+			kp_index = 0
+
 		# compute gradient of z_axis with respect to the derivative of k
-
-		# dz_axis_list = [np.array([0,0,0])]
-		# z_axis_list = [np.array([0,0,1])]
-
 		dz_axis_list = []
 		z_axis_list = []		
 
@@ -282,6 +302,11 @@ def evaluate_Dq_derivative(obj_list):
 			for j in i_list:
 				Zjm1 = z_axis_list[j]
 				dZjm1 = dz_axis_list[j]
+				# j's parent index is different
+				if j>0:
+					jp_index = obj_list[j].parent.getIndex() + 1
+				else:
+					jp_index = 0
 				if obj_list[j].type == 'PrismaticJoint':
 					Jvi[:,j] = Zjm1
 					if k<j and k in i_list:
@@ -289,17 +314,17 @@ def evaluate_Dq_derivative(obj_list):
 							dJvi[:,j] = dZjm1
 						# otherwise no effect on this axis if is prismatic joint
 				elif obj_list[j].type == 'RevoluteJoint':
-					Jvi[:,j] = np.cross(Zjm1, (Oci - O[j]))
+					Jvi[:,j] = np.cross(Zjm1, (Oci - O[jp_index]))
 					if k<j and k in i_list:
 						dZjm1 = dZjm1
 						if obj_list[k].type == 'RevoluteJoint':
-							dJvi[:,j] = np.cross(Zjm1, np.cross(Zkm1, (Oci - O[j])) ) + np.cross(dZjm1, (Oci - O[j]))
+							dJvi[:,j] = np.cross(Zjm1, np.cross(Zkm1, (Oci - O[jp_index])) ) + np.cross(dZjm1, (Oci - O[jp_index]))
 						# otherwise no effect on this axis if is prismatic joint
 					elif k<i+1 and k in i_list:
 						# no derivative of Zjm1 as k>j
 						dZjm1 = dZjm1
 						if obj_list[k].type == 'RevoluteJoint':
-							dJvi[:,j] = np.cross(Zjm1, np.cross(Zkm1, (Oci - O[k])) )
+							dJvi[:,j] = np.cross(Zjm1, np.cross(Zkm1, (Oci - O[kp_index])) )
 						# otherwise no effect on this axis if is prismatic joint
 					else:
 						dJvi[:,j] = np.zeros((3))
@@ -479,27 +504,10 @@ class World(object):
 		self.d2qdt2 = np.zeros((n))
 		self.gravity = np.array([0,0,-10], dtype=np.float32)
 
-		# for linear chain
-		# TODO generalize it for general tree like structure
 		for i in range(n):
 			self.q[i] = obj_list[i].getQ()
 			self.dqdt[i] = obj_list[i].getDq()
 			self.d2qdt2[i] = obj_list[i].getD2q()
-
-		# q = np.array([0,0,np.pi/2], dtype=np.float32)
-		# self.q = np.array([0,0,3*np.pi/4], dtype=np.float32)
-		# self.q = np.array([0,0,np.pi/2 - np.pi/8,2*np.pi/8], dtype=np.float32)
-		# self.q = np.array([0,0,np.pi/2 ,2*np.pi/8], dtype=np.float32)
-		# self.q = np.array([0,0,0 ,2*np.pi/8], dtype=np.float32)
-		# self.dqdt = np.array([0,0,1], dtype=np.float32)
-		# self.dqdt = np.array([1,1,1,1], dtype=np.float32)
-		# self.dqdt = np.array([1,1,1,1,1,1,1,1], dtype=np.float32)
-		# dqdt = np.array([2,0,1,0], dtype=np.float32)
-
-		for i in range(n):
-			self.obj_list[i].setQ(self.q[i] )
-			self.obj_list[i].setDq(self.dqdt[i] )
-			self.obj_list[i].setD2q(self.d2qdt2[i] )
 
 		self.t = 0
 
@@ -574,9 +582,9 @@ class World(object):
 						contact_point = contact_points[list_index]
 						contact_normal = contact_normals[list_index]
 						point_affect = point_affect_list[list_index]
+						# chain_index = chain_index_list[list_index]
 						Jvi = evaluateJacobian(obj_list, i, point_affect)
 						# solve the constraint equation ---> using LCP
-						# N_lcp = np.transpose(Jvi) @ contact_normal
 						N_lcp_i = np.transpose(Jvi) @ contact_normal
 						N_lcp[:,list_index] = N_lcp_i
 
@@ -585,7 +593,6 @@ class World(object):
 						d = number_of_basis_vectors
 						B_lcp[:,d*list_index:d*(list_index+1)] = B_lcp_i
 
-						
 					lcp_A11 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp)
 					lcp_A12 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ B_lcp)
 					lcp_A13 = np.zeros((p, p))
@@ -616,7 +623,6 @@ class World(object):
 					lcp_A[p+p*d:2*p+p*d,p:p+p*d] = lcp_A32
 					lcp_A[p+p*d:2*p+p*d,p+p*d:2*p+p*d] = lcp_A33
 
-
 					lcp_q = np.zeros((2*p+p*d,1))
 					lcp_q[0:p] = np.reshape(lcp_q1, (p,1))
 					lcp_q[p:p+p*d] = np.reshape(lcp_q2, (p*d,1))
@@ -634,7 +640,6 @@ class World(object):
 						# it is the detaching case where there is contact but the collision is moving apart
 						return np.zeros((n,)), True
 					else:
-						# pdb.set_trace()
 						return np.zeros((n,)), True
 
 				else:
@@ -668,7 +673,7 @@ class World(object):
 		print("t: ", np.array([t]), "C : ", C)	
 		# print("t: ", np.array([t]), "Dq_2 : \n", Dq_derivative[:,:,2])	
 		# print("t: ", np.array([t]), "Dq_3 : \n", Dq_derivative[:,:,3])	
-		# print("t: ", np.array([t]), "Phi : ", phi)
+		print("t: ", np.array([t]), "Phi : ", phi)
 		# print("t: ", np.array([t]), "rhs : ", rhs)
 		print()
 
