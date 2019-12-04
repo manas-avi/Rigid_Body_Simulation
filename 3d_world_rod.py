@@ -79,7 +79,6 @@ torque = np.zeros((n,))
 for i in range(n):
 	obj_list[i].setIndex(i)
 
-
 if __name__ == '__main__':
 	dt = 0.01
 	world = World.World(obj_list)

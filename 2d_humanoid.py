@@ -25,6 +25,39 @@ def readFile(filename):
 	return new_lines
 
 
+def interpolate_frames(base_frames, method='linear'):
+	new_frames = []
+	num_frames = len(base_frames)
+	num_int_frames = 20
+	for i in range(num_frames-1):
+		int_frames = []
+		pose_1 = base_frames[i]
+		pose_2 = base_frames[i+1]
+		for j in range(num_int_frames):
+			int_frame = ( pose_2*j + pose_1*(num_int_frames-j)) / num_int_frames
+			int_frames.append(int_frame)
+		new_frames = new_frames + int_frames
+	return new_frames
+
+def interpolate_velocities(frames):
+	n = len(frames)
+	dof = frames[0].shape[0]
+	vels = [np.zeros((dof,))]
+	for i in range(n-1):
+		vel = frames[i+1] - frames[i]
+		vels.append(vel)
+	vels[0] = vels[1]
+	return vels
+
+def interpolate_acceleration(frames):
+	n = len(frames)
+	dof = frames[0].shape[0]
+	accs = [np.zeros((dof,))]
+	for i in range(n-1):
+		acc = frames[i+1] - frames[i]
+		accs.append(acc)
+	return accs
+
 # g = np.array([0,0,-10])
 g = np.array([0,0,0])
 # same axis of rotation
@@ -98,7 +131,7 @@ for i in range(n):
 
 
 if __name__ == '__main__':
-	dt = 0.01
+	dt = 0.1
 	world = World.World(obj_list)
 
 	# rest pose
@@ -120,15 +153,24 @@ if __name__ == '__main__':
 	contact_pose = np.array([0,0,5*np.pi/6,np.pi/8,-3*np.pi/5,   11*np.pi/10, np.pi/10,-np.pi/2], dtype=np.float32)
 	down_pose = np.array([0,0,3*np.pi/4,np.pi/3,-np.pi/2,    19*np.pi/20,2*np.pi/5,-2*np.pi/5], dtype=np.float32)
 	passing_pose = np.array([0,0,5*np.pi/6,np.pi/3,-np.pi/3,    21*np.pi/20,np.pi/20,-3*np.pi/5], dtype=np.float32)
-	up_pose = np.array([0,0,7*np.pi/10,np.pi/2,-np.pi/3,    21*np.pi/20,np.pi/20,-2*np.pi/5], dtype=np.float32)
+	up_pose = np.array([0,0,21*np.pi/20,np.pi/20,-2*np.pi/5,    7*np.pi/10,np.pi/2,-np.pi/3], dtype=np.float32)
 
 	rcontact_pose = np.array([0,0,11*np.pi/10, np.pi/10,-np.pi/2,  5*np.pi/6,np.pi/8,-3*np.pi/5], dtype=np.float32)
 	rdown_pose = np.array([0,0,19*np.pi/20,2*np.pi/5,-2*np.pi/5  ,3*np.pi/4,np.pi/3,-np.pi/2], dtype=np.float32)
 	rpassing_pose = np.array([0,0,21*np.pi/20,np.pi/20,-3*np.pi/5,  5*np.pi/6,np.pi/3,-np.pi/3], dtype=np.float32)
-	rup_pose = np.array([0,0,21*np.pi/20,np.pi/20,-2*np.pi/5,    7*np.pi/10,np.pi/2,-np.pi/3], dtype=np.float32)
+	rup_pose = np.array([0,0,7*np.pi/10,np.pi/2,-np.pi/3,  21*np.pi/20,np.pi/20,-2*np.pi/5], dtype=np.float32)
+
+	base_frames = [contact_pose, down_pose, passing_pose, up_pose, rcontact_pose,
+					 rdown_pose, rpassing_pose, rup_pose, contact_pose]
 
 
-	world.setQ(rest_pose)
+	new_frames = interpolate_frames(base_frames)
+	vel_frames = interpolate_velocities(new_frames)
+	acc_frames = interpolate_acceleration(vel_frames)
+	# pdb.set_trace()
+	world.setQ(contact_pose)
+
+	# world.setQ(passing_pose)
 	# world.setQ(np.array([0,0,np.pi-np.pi/8,0, np.pi/8, np.pi+np.pi/8,0, -np.pi/8], dtype=np.float32))
 	# dof_values = readFile('frame_values.txt')
 	# world.setQ(dof_values[1])
@@ -153,36 +195,45 @@ if __name__ == '__main__':
 	switch = 0
 	frame_count = 0
 	frame_rate = 1
-	fps = 2
+	fps = 20
+	frame_index = 0
 	while True:
-		# animate world with constant poses
-		if switch == 0: 
-			pose = contact_pose
-		elif switch == 1: 
-			pose = down_pose
-		elif switch == 2: 
-			pose = passing_pose
-		elif switch == 3: 
-			pose = up_pose
-		elif switch == 4: 
-			pose = rcontact_pose
-		elif switch == 5: 
-			pose = rdown_pose
-		elif switch == 6: 
-			pose = rpassing_pose
-		elif switch == 7: 
-			pose = rup_pose			
-		frame_count+=frame_rate
-		if frame_count>fps:
-			world.setQ(pose)
-			switch = (switch + 1) % num_poses
-			frame_count = 0
-			print('new switch is ', switch)
+		# # animate world with constant poses
+		# if switch == 0: 
+		# 	pose = contact_pose
+		# elif switch == 1: 
+		# 	pose = down_pose
+		# elif switch == 2: 
+		# 	pose = passing_pose
+		# elif switch == 3: 
+		# 	pose = up_pose
+		# elif switch == 4: 
+		# 	pose = rcontact_pose
+		# elif switch == 5: 
+		# 	pose = rdown_pose
+		# elif switch == 6: 
+		# 	pose = rpassing_pose
+		# elif switch == 7: 
+		# 	pose = rup_pose			
 
-		# if on_ground:
-		# 	on_ground = world.advect(torque, dt/4)
-		# else:
-		# 	on_ground = world.advect(torque, dt)
+
+		# frame_count+=frame_rate
+		# if frame_count>fps:
+		# 	world.setQ(pose)
+		# 	switch = (switch + 1) % num_poses
+		# 	frame_count = 0
+		# 	print('new switch is ', switch)
+
+		# animate interpolated frames
+		# world.setQ(new_frames[frame_index])
+		# pdb.set_trace()
+		world.setdqdt(vel_frames[np.int(np.floor(frame_index))]*(1-dt) + vel_frames[np.int(np.floor(frame_index))+1]*dt)
+		frame_index = (frame_index + dt) % len(new_frames)
+
+		if on_ground:
+			on_ground = world.advect(torque, dt/4)
+		else:
+			on_ground = world.advect(torque, dt)
 		world.update()
 
 		# debug statemetns
