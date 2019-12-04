@@ -553,7 +553,7 @@ class World(object):
 			coef_rest = 0.0
 			# coef_fric = 0.001
 			# coef_fric = 1.19
-			coef_fric = 3
+			coef_fric = 1
 			# because of numerics answer is slightly greater than 1
 			# otherwise optimal value for mu is 1.0
 

@@ -9,43 +9,59 @@ import matplotlib.pyplot as plt
 import pdb
 import lemkelcp as lcp
 
-g = np.array([0,0,-10])
-# g = np.array([0,0,0])
+
+def readFile(filename):
+
+	f = open(filename)
+	lines = f.readlines()
+	new_lines = []
+	for line in lines:
+		line = line.split(',')
+		new_elems = []
+		for elem in line:
+			new_elems.append(float(elem))
+		new_lines.append(new_elems)
+	new_lines = np.array(new_lines)
+	return new_lines
+
+
+# g = np.array([0,0,-10])
+g = np.array([0,0,0])
 # same axis of rotation
-origin=np.array([6,4,12,4], dtype=np.float32)
+origin=np.array([6,4,10,4], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
 
 # pobj_0.addChild(pobj_1)
 
 
-pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 6,4,12, 6,4,12, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
+pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 6,4,10, 6,4,10,q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
 pobj_0.setMass(0)
 pobj_0.showText = True
-pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 6,4,12, 6,4,12, 	q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
+pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 6,4,10, 6,4,10,q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
 pobj_1.setMass(0)
 pobj_0.addChild(pobj_1)
 
-lobj_1 = RevoluteJoint.RevoluteJoint('lobj_1', 6,4,12, 10,4,12, x_length=4, x_alpha=0,z_length=0, color="pink")
+lobj_1 = RevoluteJoint.RevoluteJoint('lobj_1', 6,4,10, 10,4,10, x_length=4, x_alpha=0,z_length=0, color="pink")
 lobj_1.showText = True
 pobj_1.addChild(lobj_1)
 
-lobj_2 = RevoluteJoint.RevoluteJoint('lobj_2', 10,4,12, 14,4,12, x_length=4, x_alpha=0,z_length=0, color="cyan")
+lobj_2 = RevoluteJoint.RevoluteJoint('lobj_2', 10,4,10, 14,4,10, x_length=4, x_alpha=0,z_length=0, color="cyan")
 lobj_2.showText = True
 lobj_1.addChild(lobj_2)
 
-lobj_3 = RevoluteJoint.RevoluteJoint('lobj_3', 14,4,12, 16,4,12, x_length=2, x_alpha=0,z_length=0, color="orange")
+lobj_3 = RevoluteJoint.RevoluteJoint('lobj_3', 14,4,10, 15,4,10, x_length=1, x_alpha=0,z_length=0, color="orange")
 lobj_3.showText = True
 lobj_2.addChild(lobj_3)
 
-robj_1 = RevoluteJoint.RevoluteJoint('robj_1', 6,4,12, 10,4,12, x_length=4, x_alpha=0,z_length=0, color="pink")
+robj_1 = RevoluteJoint.RevoluteJoint('robj_1', 6,4,10, 10,4,10, x_length=4, x_alpha=0,z_length=0, color="pink")
 robj_1.showText = True
 pobj_1.addChild(robj_1)
 
-robj_2 = RevoluteJoint.RevoluteJoint('robj_2', 10,4,12, 14,4,12, x_length=4, x_alpha=0,z_length=0, color="cyan")
+robj_2 = RevoluteJoint.RevoluteJoint('robj_2', 10,4,10, 14,4,10, x_length=4, x_alpha=0,z_length=0, color="cyan")
 robj_2.showText = True
 robj_1.addChild(robj_2)
 
-robj_3 = RevoluteJoint.RevoluteJoint('robj_3', 14,4,12, 16,4,12, x_length=2, x_alpha=0,z_length=0, color="orange")
+robj_3 = RevoluteJoint.RevoluteJoint('robj_3', 14,4,10, 15,4,10, x_length=1, x_alpha=0,z_length=0, color="orange")
 robj_3.showText = True
 robj_2.addChild(robj_3)
 
@@ -84,11 +100,40 @@ for i in range(n):
 if __name__ == '__main__':
 	dt = 0.01
 	world = World.World(obj_list)
-	# world.setQ(np.array([0,0,np.pi,0, 0, ], dtype=np.float32))
-	# world.setQ(np.array([0,0,np.pi-np.pi/8,0, np.pi+np.pi/8,0], dtype=np.float32))
-	world.setQ(np.array([0,0,np.pi-np.pi/8,0, np.pi/8, np.pi+np.pi/8,0, -np.pi/8], dtype=np.float32))
-	# world.setQ(np.array([0,0,np.pi/2 +3* np.pi/8 ,np.pi/16, -np.pi/8], dtype=np.float32))
-	# world.setQ(np.array([0,0,np.pi/2 + np.pi/8,np.pi/8, -np.pi/8, -np.pi/8], dtype=np.float32))
+
+	# rest pose
+	# world.setQ(np.array([0,0,np.pi,0,-np.pi/2,np.pi,0,-np.pi/2], dtype=np.float32))
+
+	# contact pose
+	# world.setQ(np.array([0,0,5*np.pi/6,np.pi/8,-3*np.pi/5,   21*np.pi/20, np.pi/10,-np.pi/2], dtype=np.float32))	
+
+	# down pose
+	# world.setQ(np.array([0,0,3*np.pi/4,np.pi/3,-np.pi/2,    19*np.pi/20,2*np.pi/5,-2*np.pi/5], dtype=np.float32))	
+
+	# passing pose
+	# world.setQ(np.array([0,0,5*np.pi/6,np.pi/3,-np.pi/3,    21*np.pi/20,np.pi/20,-3*np.pi/5], dtype=np.float32))	
+
+	# up pose
+	# world.setQ(np.array([0,0,7*np.pi/10,np.pi/2,-np.pi/3,    21*np.pi/20,np.pi/20,-2*np.pi/5], dtype=np.float32))	
+
+	rest_pose = np.array([0,0,np.pi,0,-np.pi/2,np.pi,0,-np.pi/2], dtype=np.float32)
+	contact_pose = np.array([0,0,5*np.pi/6,np.pi/8,-3*np.pi/5,   11*np.pi/10, np.pi/10,-np.pi/2], dtype=np.float32)
+	down_pose = np.array([0,0,3*np.pi/4,np.pi/3,-np.pi/2,    19*np.pi/20,2*np.pi/5,-2*np.pi/5], dtype=np.float32)
+	passing_pose = np.array([0,0,5*np.pi/6,np.pi/3,-np.pi/3,    21*np.pi/20,np.pi/20,-3*np.pi/5], dtype=np.float32)
+	up_pose = np.array([0,0,7*np.pi/10,np.pi/2,-np.pi/3,    21*np.pi/20,np.pi/20,-2*np.pi/5], dtype=np.float32)
+
+	rcontact_pose = np.array([0,0,11*np.pi/10, np.pi/10,-np.pi/2,  5*np.pi/6,np.pi/8,-3*np.pi/5], dtype=np.float32)
+	rdown_pose = np.array([0,0,19*np.pi/20,2*np.pi/5,-2*np.pi/5  ,3*np.pi/4,np.pi/3,-np.pi/2], dtype=np.float32)
+	rpassing_pose = np.array([0,0,21*np.pi/20,np.pi/20,-3*np.pi/5,  5*np.pi/6,np.pi/3,-np.pi/3], dtype=np.float32)
+	rup_pose = np.array([0,0,21*np.pi/20,np.pi/20,-2*np.pi/5,    7*np.pi/10,np.pi/2,-np.pi/3], dtype=np.float32)
+
+
+	world.setQ(rest_pose)
+	# world.setQ(np.array([0,0,np.pi-np.pi/8,0, np.pi/8, np.pi+np.pi/8,0, -np.pi/8], dtype=np.float32))
+	# dof_values = readFile('frame_values.txt')
+	# world.setQ(dof_values[1])
+	# world.setQ(np.array([0,0,np.pi-np.pi/8,np.pi/8,0, np.pi,0,0], dtype=np.float32))
+
 	# world.setdqdt(np.array([1,5,1,1,1], dtype=np.float32))
 	# world.setdqdt(np.array([0,0,1,-1,-1,1], dtype=np.float32))
 	# world.setdqdt(np.array([0,0,-1,1,-1,1,-1,1], dtype=np.float32))
@@ -97,21 +142,47 @@ if __name__ == '__main__':
 	world.set_link_origin(origin)
 	world.set_gravity(g)
 
+
 	# t_list=[]
 	# e_list=[]
 	# q_list=[]
 
-	on_ground = False
-	while True:
+	num_poses = 8
 
-		# DO some inverse kinetics here.............
-		# world.advect(torque, dt)
-		# 	torque[-1] = 1
-		if on_ground:
-			on_ground = world.advect(torque, dt/4)
-		else:
-			on_ground = world.advect(torque, dt)
-		# print(on_ground)
+	on_ground = False
+	switch = 0
+	frame_count = 0
+	frame_rate = 1
+	fps = 2
+	while True:
+		# animate world with constant poses
+		if switch == 0: 
+			pose = contact_pose
+		elif switch == 1: 
+			pose = down_pose
+		elif switch == 2: 
+			pose = passing_pose
+		elif switch == 3: 
+			pose = up_pose
+		elif switch == 4: 
+			pose = rcontact_pose
+		elif switch == 5: 
+			pose = rdown_pose
+		elif switch == 6: 
+			pose = rpassing_pose
+		elif switch == 7: 
+			pose = rup_pose			
+		frame_count+=frame_rate
+		if frame_count>fps:
+			world.setQ(pose)
+			switch = (switch + 1) % num_poses
+			frame_count = 0
+			print('new switch is ', switch)
+
+		# if on_ground:
+		# 	on_ground = world.advect(torque, dt/4)
+		# else:
+		# 	on_ground = world.advect(torque, dt)
 		world.update()
 
 		# debug statemetns
@@ -120,7 +191,7 @@ if __name__ == '__main__':
 
 		world.render()
 
-		# if world.t>10:
+		# if world.t>0.1:
 		# 	break
 
 
