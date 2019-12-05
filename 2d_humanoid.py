@@ -39,27 +39,28 @@ def interpolate_frames(base_frames, method='linear'):
 		new_frames = new_frames + int_frames
 	return new_frames
 
-def interpolate_velocities(frames):
+def interpolate_velocities(frames, dt):
 	n = len(frames)
 	dof = frames[0].shape[0]
 	vels = [np.zeros((dof,))]
 	for i in range(n-1):
-		vel = frames[i+1] - frames[i]
+		vel = (frames[i+1] - frames[i]) / dt
 		vels.append(vel)
 	vels[0] = vels[1]
 	return vels
 
-def interpolate_acceleration(frames):
+def interpolate_acceleration(frames, dt):
 	n = len(frames)
 	dof = frames[0].shape[0]
 	accs = [np.zeros((dof,))]
 	for i in range(n-1):
+		# acc = (frames[i+1] - frames[i]) / dt
 		acc = frames[i+1] - frames[i]
 		accs.append(acc)
 	return accs
 
-# g = np.array([0,0,-10])
-g = np.array([0,0,0])
+g = np.array([0,0,-10])
+# g = np.array([0,0,0])
 # same axis of rotation
 origin=np.array([6,4,10,4], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
@@ -131,7 +132,7 @@ for i in range(n):
 
 
 if __name__ == '__main__':
-	dt = 0.1
+	dt = 0.01/2
 	world = World.World(obj_list)
 
 	# rest pose
@@ -165,9 +166,9 @@ if __name__ == '__main__':
 
 
 	new_frames = interpolate_frames(base_frames)
-	vel_frames = interpolate_velocities(new_frames)
-	acc_frames = interpolate_acceleration(vel_frames)
-	# pdb.set_trace()
+	vel_frames = interpolate_velocities(new_frames, dt)
+	# this trajectory for all purposes is good enough
+	acc_frames = interpolate_acceleration(vel_frames, dt)
 	world.setQ(contact_pose)
 
 	# world.setQ(passing_pose)
@@ -227,8 +228,11 @@ if __name__ == '__main__':
 		# animate interpolated frames
 		# world.setQ(new_frames[frame_index])
 		# pdb.set_trace()
-		world.setdqdt(vel_frames[np.int(np.floor(frame_index))]*(1-dt) + vel_frames[np.int(np.floor(frame_index))+1]*dt)
-		frame_index = (frame_index + dt) % len(new_frames)
+		# world.setdqdt(vel_frames[np.int(np.floor(frame_index))]*(1-dt) + vel_frames[np.int(np.floor(frame_index))+1]*dt)
+		# world.setdqdt(vel_frames[np.int(np.floor(frame_index))]*dt)
+		# frame_index = (frame_index + dt) % len(new_frames)
+		# print(world.t, (np.int(np.floor(frame_index))))
+		# print(world.t, vel_frames[np.int(np.floor(frame_index))] )
 
 		if on_ground:
 			on_ground = world.advect(torque, dt/4)

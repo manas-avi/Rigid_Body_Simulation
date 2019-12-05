@@ -544,7 +544,8 @@ class World(object):
 		phi = evaluate_potential_energy_derivative(obj_list, self.gravity)
 		# create phi array as derivative of pe with qi's
 		Dq_derivative = evaluate_Dq_derivative(obj_list) # its is matrix of shape - nXnXn
-		C = createCArray(Dq_derivative, dqdt)
+		# C = createCArray(Dq_derivative, dqdt)
+		C = createCArray(Dq_derivative, dqdt) * 0
 
 		rhs = torque - phi - C
 		rhs = rhs * dt
