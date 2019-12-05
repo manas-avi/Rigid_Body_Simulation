@@ -25,10 +25,10 @@ def readFile(filename):
 	return new_lines
 
 
-def interpolate_frames(base_frames, method='linear'):
+def interpolate_frames(base_frames, dt, method='linear'):
 	new_frames = []
 	num_frames = len(base_frames)
-	num_int_frames = 20
+	num_int_frames = np.int(1/dt)
 	for i in range(num_frames-1):
 		int_frames = []
 		pose_1 = base_frames[i]
@@ -44,7 +44,7 @@ def interpolate_velocities(frames, dt):
 	dof = frames[0].shape[0]
 	vels = [np.zeros((dof,))]
 	for i in range(n-1):
-		vel = (frames[i+1] - frames[i]) / dt
+		vel = (frames[i+1] - frames[i])
 		vels.append(vel)
 	vels[0] = vels[1]
 	return vels
@@ -59,8 +59,8 @@ def interpolate_acceleration(frames, dt):
 		accs.append(acc)
 	return accs
 
-g = np.array([0,0,-10])
-# g = np.array([0,0,0])
+# g = np.array([0,0,-10])
+g = np.array([0,0,0])
 # same axis of rotation
 origin=np.array([6,4,10,4], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
@@ -132,7 +132,7 @@ for i in range(n):
 
 
 if __name__ == '__main__':
-	dt = 0.01/2
+	dt = 0.01*5
 	world = World.World(obj_list)
 
 	# rest pose
@@ -165,8 +165,15 @@ if __name__ == '__main__':
 					 rdown_pose, rpassing_pose, rup_pose, contact_pose]
 
 
-	new_frames = interpolate_frames(base_frames)
+	new_frames = interpolate_frames(base_frames, dt)
 	vel_frames = interpolate_velocities(new_frames, dt)
+	new_vel_frames = []
+	for f in vel_frames:
+		f[1] = dt
+		new_vel_frames.append(f)
+
+	vel_frames = new_vel_frames
+	# pdb.set_trace()
 	# this trajectory for all purposes is good enough
 	acc_frames = interpolate_acceleration(vel_frames, dt)
 	world.setQ(contact_pose)
@@ -226,10 +233,10 @@ if __name__ == '__main__':
 		# 	print('new switch is ', switch)
 
 		# animate interpolated frames
-		# world.setQ(new_frames[frame_index])
-		# pdb.set_trace()
+		world.setQ(new_frames[frame_index])
 		# world.setdqdt(vel_frames[np.int(np.floor(frame_index))]*(1-dt) + vel_frames[np.int(np.floor(frame_index))+1]*dt)
-		# world.setdqdt(vel_frames[np.int(np.floor(frame_index))]*dt)
+		world.setdqdt(vel_frames[frame_index])
+		frame_index = (frame_index + 1) % len(new_frames)
 		# frame_index = (frame_index + dt) % len(new_frames)
 		# print(world.t, (np.int(np.floor(frame_index))))
 		# print(world.t, vel_frames[np.int(np.floor(frame_index))] )
