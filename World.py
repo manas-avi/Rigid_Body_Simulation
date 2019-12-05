@@ -501,6 +501,7 @@ class World(object):
 		self.dqdt = np.zeros((n))
 		self.d2qdt2 = np.zeros((n))
 		self.gravity = np.array([0,0,-10], dtype=np.float32)
+		self.friction = 1.0
 
 		for i in range(n):
 			self.q[i] = obj_list[i].getQ()
@@ -512,6 +513,9 @@ class World(object):
 
 	def set_gravity(self, gravity):
 		self.gravity = gravity
+
+	def set_friction(self, fr):
+		self.friction = fr
 
 	def set_link_origin(self, origin):
 		self.origin = origin
@@ -545,7 +549,7 @@ class World(object):
 		# create phi array as derivative of pe with qi's
 		Dq_derivative = evaluate_Dq_derivative(obj_list) # its is matrix of shape - nXnXn
 		# C = createCArray(Dq_derivative, dqdt)
-		C = createCArray(Dq_derivative, dqdt) * 0
+		C = createCArray(Dq_derivative, dqdt)
 
 		rhs = torque - phi - C
 		rhs = rhs * dt
@@ -554,7 +558,7 @@ class World(object):
 			coef_rest = 0.0
 			# coef_fric = 0.001
 			# coef_fric = 1.19
-			coef_fric = 1
+			coef_fric = self.friction
 			# because of numerics answer is slightly greater than 1
 			# otherwise optimal value for mu is 1.0
 
