@@ -188,6 +188,7 @@ if __name__ == '__main__':
 
 	world.set_link_origin(origin)
 	world.set_gravity(g)
+	world.isCollision = False
 
 
 	# t_list=[]
@@ -207,9 +208,6 @@ if __name__ == '__main__':
 	while True:
 		# animate interpolated frames
 		world.setQ(new_frames[frame_index])
-		# world.setdqdt(vel_frames[np.int(np.floor(frame_index))]*(1-dt) + vel_frames[np.int(np.floor(frame_index))+1]*dt)
-		# world.setdqdt()
-
 		if 'torque_list.npy' in os.listdir('./'):
 			torque_list = np.load('torque_list.npy')
 			torque = torque_list[frame_index]
@@ -226,7 +224,7 @@ if __name__ == '__main__':
 
 		world.render()
 
-		if world.t>5:
+		if world.t>10:
 			if save_torque_value:
 				np.save('torque_list.npy', np.array(torque_list))
 			break

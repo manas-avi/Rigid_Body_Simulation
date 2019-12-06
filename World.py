@@ -510,6 +510,7 @@ class World(object):
 
 		self.t = 0
 
+		self.isCollision = True
 
 	def set_gravity(self, gravity):
 		self.gravity = gravity
@@ -537,11 +538,10 @@ class World(object):
 		obj_list = self.obj_list
 		n = len(obj_list)
 
-
 		# previous copies are used to compute the matrices ---> 
 		q = self.q.copy()
 		dqdt = self.dqdt.copy()
-		collision = False
+		collision = self.isCollision
 		ke = 0
 		Dq =  evaluate_Dq(obj_list)
 		ke = (1/2) * np.transpose(dqdt) @ Dq @ dqdt
@@ -691,11 +691,10 @@ class World(object):
 		t = self.t
 		self.t += dt
 
-		print("t: ", np.array([t]), "dqdt : ", dqdt)
+		# print("t: ", np.array([t]), "dqdt : ", dqdt)
 		self.update()
-		print("t: ", np.array([t]), "q : ", q)
+		# print("t: ", np.array([t]), "q : ", q)
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
-		print("t: ", np.array([t]), "C : ", C)	
 		print()
 
 		return torque_list
@@ -708,7 +707,7 @@ class World(object):
 		# assigning it like this makses a shallow copy
 		q = self.q.copy()
 		dqdt = self.dqdt.copy()
-		collision = False
+		collision = self.isCollision
 		ke = 0
 		Dq =  evaluate_Dq(obj_list)
 		ke = (1/2) * np.transpose(dqdt) @ Dq @ dqdt
