@@ -532,7 +532,7 @@ class World(object):
 		for i in range(n):
 			self.obj_list[i].setDq(self.dqdt[i])
 
-	def iadvect(self, qdot_des, dt):
+	def iadvect(self, qdot_des, dt, torque_list):
 		on_ground = False
 		obj_list = self.obj_list
 		n = len(obj_list)
@@ -567,17 +567,14 @@ class World(object):
 		v_new = np.zeros((num_dof,))
 		# with the constraint that P @ v_final = q_des
 
-		# return vnext time step and torque value
-		coef_rest = 0.0
-		coef_fric = self.friction
-
 		# don't make it zero numerical unstability
-		number_of_basis_vectors = 4
-		vel_diff = np.zeros((n,))
 		if collision:
 			obj_indices, contact_points, contact_normals, point_affect_list = detectCollisions(obj_list)
 			if len(contact_points) > 0:
 				# collision is detected therefore apply collision constraints
+				number_of_basis_vectors = 4
+				coef_rest = 0.0
+				coef_fric = self.friction
 				num_contact_points = len(contact_points)
 				d = number_of_basis_vectors
 				p = num_contact_points
@@ -658,7 +655,16 @@ class World(object):
 
 			else:
 				# since no collision takes place now here is how we will obtain the torque values
-				return np.zeros((n,)), False
+				# thus solution is similar to the case below
+				v_final = np.zeros((n,))
+				diff = num_dof- num_actuated_dof
+				A_11 = Dq[0:diff,0:diff]
+				A_12 = Dq[0:diff:,diff:]
+				v_final_rest = qdot_des
+				v_final_start = np.linalg.solve(A_11 , tau_star[0:diff] -A_12 @ v_final_rest)
+				v_final[diff:,] = qdot_des
+				v_final[0:diff,] = v_final_start
+				torque = P @ Dq @ v_final - P @ tau_star
 		else:
 			# assuming we have switched off the collision interactoin
 			# then we just need to solve two equations----
@@ -675,7 +681,7 @@ class World(object):
 			torque = P @ Dq @ v_final - P @ tau_star
 
 		actual_torque = np.transpose(P) @ torque
-
+		torque_list.append(actual_torque)
 		dqdt = v_final
 		q += dqdt*dt
 
@@ -692,7 +698,7 @@ class World(object):
 		print("t: ", np.array([t]), "C : ", C)	
 		print()
 
-		return on_ground
+		return torque_list
 
 	def advect(self, torque, dt):
 		on_ground = False
@@ -702,7 +708,7 @@ class World(object):
 		# assigning it like this makses a shallow copy
 		q = self.q.copy()
 		dqdt = self.dqdt.copy()
-		collision = True
+		collision = False
 		ke = 0
 		Dq =  evaluate_Dq(obj_list)
 		ke = (1/2) * np.transpose(dqdt) @ Dq @ dqdt

@@ -1,13 +1,10 @@
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import patches
-from matplotlib.collections import PatchCollection
 import numpy as np
 import RevoluteJoint
 import PrismaticJoint
 import World
 import matplotlib.pyplot as plt
 import pdb
-import lemkelcp as lcp
+import os
 
 
 def readFile(filename):
@@ -205,14 +202,22 @@ if __name__ == '__main__':
 	frame_rate = 1
 	fps = 20
 	frame_index = 0
+	torque_list = []
+	save_torque_value = True
 	while True:
 		# animate interpolated frames
 		world.setQ(new_frames[frame_index])
 		# world.setdqdt(vel_frames[np.int(np.floor(frame_index))]*(1-dt) + vel_frames[np.int(np.floor(frame_index))+1]*dt)
 		# world.setdqdt()
 
-		world.iadvect(vel_frames[frame_index][2:], dt)
-		frame_index = (frame_index + 1) % len(new_frames)
+		if 'torque_list.npy' in os.listdir('./'):
+			torque_list = np.load('torque_list.npy')
+			torque = torque_list[frame_index]
+			world.advect(torque, dt)
+
+		else:
+			torque_list = world.iadvect(vel_frames[frame_index][2:], dt, torque_list)
+		frame_index = (frame_index+1) % len(new_frames)
 		world.update()
 
 		# debug statemetns
@@ -221,10 +226,16 @@ if __name__ == '__main__':
 
 		world.render()
 
-		# if world.t>0.1:
-		# 	break
+		if world.t>5:
+			if save_torque_value:
+				np.save('torque_list.npy', np.array(torque_list))
+			break
+
+	
 
 
+
+exit()
 # plt.title('energy graph')
 # plt.xlabel('time ---->')
 # plt.ylabel('energy ---->')
