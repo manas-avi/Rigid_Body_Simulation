@@ -164,13 +164,6 @@ if __name__ == '__main__':
 
 	new_frames = interpolate_frames(base_frames, dt)
 	vel_frames = interpolate_velocities(new_frames, dt)
-	new_vel_frames = []
-	for f in vel_frames:
-		f[1] = dt
-		new_vel_frames.append(f)
-
-	vel_frames = new_vel_frames
-	# pdb.set_trace()
 	# this trajectory for all purposes is good enough
 	acc_frames = interpolate_acceleration(vel_frames, dt)
 	world.setQ(contact_pose)
@@ -191,7 +184,7 @@ if __name__ == '__main__':
 	world.isCollision = False
 
 
-	# t_list=[]
+	t_list=[]
 	# e_list=[]
 	# q_list=[]
 
@@ -205,13 +198,16 @@ if __name__ == '__main__':
 	frame_index = 0
 	torque_list = []
 	save_torque_value = True
+	# dqdt_diff_list = []
 	while True:
 		# animate interpolated frames
 		world.setQ(new_frames[frame_index])
 		if 'torque_list.npy' in os.listdir('./'):
+			save_torque_value = False
 			torque_list = np.load('torque_list.npy')
 			torque = torque_list[frame_index]
 			world.advect(torque, dt)
+			# dqdt_diff_list.append(vel_frames[frame_index][2:] - world.dqdt[2:])
 
 		else:
 			torque_list = world.iadvect(vel_frames[frame_index][2:], dt, torque_list)
@@ -219,12 +215,12 @@ if __name__ == '__main__':
 		world.update()
 
 		# debug statemetns
-		# t_list.append(world.t)
+		t_list.append(world.t)
 		# e_list.append(energy)
 
 		world.render()
 
-		if world.t>10:
+		if world.t>2:
 			if save_torque_value:
 				np.save('torque_list.npy', np.array(torque_list))
 			break

@@ -678,7 +678,7 @@ class World(object):
 			v_final_start = np.linalg.solve(A_11 , tau_star[0:diff] -A_12 @ v_final_rest)
 			v_final[diff:,] = qdot_des
 			v_final[0:diff,] = v_final_start
-			torque = P @ Dq @ v_final - P @ tau_star
+			torque = (P @ Dq @ v_final - P @ tau_star) / dt
 
 		actual_torque = np.transpose(P) @ torque
 		torque_list.append(actual_torque)
@@ -691,10 +691,14 @@ class World(object):
 		t = self.t
 		self.t += dt
 
-		# print("t: ", np.array([t]), "dqdt : ", dqdt)
+		print("t: ", np.array([t]), "torque : ",actual_torque)
+		print("t: ", np.array([t]), "dqdt : ", dqdt)
 		self.update()
-		# print("t: ", np.array([t]), "q : ", q)
+		print("t: ", np.array([t]), "q : ", q)
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
+		print("t: ", np.array([t]), "Phi : ", phi)
+		print("t: ", np.array([t]), "C : ", C)
+		print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
 		print()
 
 		return torque_list
@@ -715,7 +719,6 @@ class World(object):
 		phi = evaluate_potential_energy_derivative(obj_list, self.gravity)
 		# create phi array as derivative of pe with qi's
 		Dq_derivative = evaluate_Dq_derivative(obj_list) # its is matrix of shape - nXnXn
-		# C = createCArray(Dq_derivative, dqdt)
 		C = createCArray(Dq_derivative, dqdt)
 
 		rhs = torque - phi - C
@@ -829,21 +832,22 @@ class World(object):
 		t = self.t
 		self.t += dt
 
+		print("t: ", np.array([t]), "torque : ", torque)
 		print("t: ", np.array([t]), "dqdt : ", dqdt)
 		self.update()
 		# Jci = evaluateJacobian(obj_list, 2, -1)
 		# Jvi = evaluateJacobian(obj_list, 2, 1)
 		# print("t: ", np.array([t]), "com vel : ", Jci@dqdt)
 		# print("t: ", np.array([t]), "end vel : ", Jvi@dqdt)
-		print("t: ", np.array([t]), "q : ", q)
-		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
 		# print("t: ", np.array([t]), "pe : ", np.array([pe]))
 		# print("t: ", np.array([t]), "ke : ", np.array([ke]))
+		print("t: ", np.array([t]), "q : ", q)
 		print("t: ", np.array([t]), "C : ", C)	
-		# print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
+		print("t: ", np.array([t]), "Phi : ", phi)
+		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
+		print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
 		# print("t: ", np.array([t]), "Dq_2 : \n", Dq_derivative[:,:,2])	
 		# print("t: ", np.array([t]), "Dq_4 : \n", Dq_derivative[:,:,4])	
-		print("t: ", np.array([t]), "Phi : ", phi)
 		# print("t: ", np.array([t]), "rhs : ", rhs)
 		print()
 
