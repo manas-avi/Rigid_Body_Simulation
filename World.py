@@ -532,6 +532,168 @@ class World(object):
 		for i in range(n):
 			self.obj_list[i].setDq(self.dqdt[i])
 
+	def iadvect(self, qdot_des, dt):
+		on_ground = False
+		obj_list = self.obj_list
+		n = len(obj_list)
+
+
+		# previous copies are used to compute the matrices ---> 
+		q = self.q.copy()
+		dqdt = self.dqdt.copy()
+		collision = False
+		ke = 0
+		Dq =  evaluate_Dq(obj_list)
+		ke = (1/2) * np.transpose(dqdt) @ Dq @ dqdt
+		pe = evaluate_potential_energy(obj_list, self.gravity)
+		phi = evaluate_potential_energy_derivative(obj_list, self.gravity)
+		# create phi array as derivative of pe with qi's
+		Dq_derivative = evaluate_Dq_derivative(obj_list) # its is matrix of shape - nXnXn
+		# C = createCArray(Dq_derivative, dqdt)
+		C = createCArray(Dq_derivative, dqdt)
+
+		tau_star = Dq@dqdt - dt*(C + phi)
+
+		# selection matrix #P		
+		num_dof = len(dqdt)
+		num_actuated_dof = len(qdot_des)
+		diff = num_dof - num_actuated_dof
+		P = np.zeros((num_actuated_dof, num_dof))
+		for i in range(num_actuated_dof):
+			for j in range(num_actuated_dof):
+				if i==j:
+					P[i,j+diff] = 1
+		torque = np.zeros((num_actuated_dof,))
+		v_new = np.zeros((num_dof,))
+		# with the constraint that P @ v_final = q_des
+
+		# return vnext time step and torque value
+		coef_rest = 0.0
+		coef_fric = self.friction
+
+		# don't make it zero numerical unstability
+		number_of_basis_vectors = 4
+		vel_diff = np.zeros((n,))
+		if collision:
+			obj_indices, contact_points, contact_normals, point_affect_list = detectCollisions(obj_list)
+			if len(contact_points) > 0:
+				# collision is detected therefore apply collision constraints
+				num_contact_points = len(contact_points)
+				d = number_of_basis_vectors
+				p = num_contact_points
+				N_lcp = np.zeros((n,p))
+				B_lcp = np.zeros((n,d*p))
+				E = np.zeros((p*d,p))
+
+				for i in range(p):
+					E[i*d:(i+1)*d,i] = np.ones((d,))
+
+				pdb.set_trace()
+
+				for i in obj_indices: 
+					obj = obj_list[i]
+					list_index = obj_indices.index(i)
+					contact_point = contact_points[list_index]
+					contact_normal = contact_normals[list_index]
+					point_affect = point_affect_list[list_index]
+					# chain_index = chain_index_list[list_index]
+					Jvi = evaluateJacobian(obj_list, i, point_affect)
+					# solve the constraint equation ---> using LCP
+					N_lcp_i = np.transpose(Jvi) @ contact_normal
+					N_lcp[:,list_index] = N_lcp_i
+
+					D_i = createBasisVector(contact_normal, contact_point, d)
+					B_lcp_i = np.transpose(Jvi) @ D_i
+					d = number_of_basis_vectors
+					B_lcp[:,d*list_index:d*(list_index+1)] = B_lcp_i
+
+				lcp_A11 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp)
+				lcp_A12 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ B_lcp)
+				lcp_A13 = np.zeros((p, p))
+
+				lcp_A21 = dt* (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ N_lcp)
+				lcp_A22 = dt* (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ B_lcp)
+				lcp_A23 = E
+
+				lcp_A31 = np.eye(p) * coef_fric
+				lcp_A32 = -np.transpose(E)
+				lcp_A33 = np.zeros((p, p))
+
+				lcp_q1 = np.transpose(N_lcp) @ np.linalg.inv(Dq) @ tau_star
+				lcp_q2 = np.transpose(B_lcp) @ np.linalg.inv(Dq) @ tau_star
+				lcp_q3 = np.zeros((p,1))
+				# other friction terms will also come for now ignoring
+				dim = 2*p + p*d
+				lcp_A = np.zeros((dim,dim))
+				lcp_A[0:p,0:p] = lcp_A11
+				lcp_A[0:p,p:p+p*d] = lcp_A12
+				lcp_A[0:p,p+p*d:2*p+p*d] = lcp_A13
+
+				lcp_A[p:p+p*d,0:p] = lcp_A21
+				lcp_A[p:p+p*d,p:p+p*d] = lcp_A22
+				lcp_A[p:p+p*d,p+p*d:2*p+p*d] = lcp_A23
+
+				lcp_A[p+p*d:2*p+p*d,0:p] = lcp_A31
+				lcp_A[p+p*d:2*p+p*d,p:p+p*d] = lcp_A32
+				lcp_A[p+p*d:2*p+p*d,p+p*d:2*p+p*d] = lcp_A33
+
+				lcp_q = np.zeros((2*p+p*d,1))
+				lcp_q[0:p] = np.reshape(lcp_q1, (p,1))
+				lcp_q[p:p+p*d] = np.reshape(lcp_q2, (p*d,1))
+				lcp_q[p+p*d:2*p+p*d] = np.reshape(lcp_q3, (p,1))
+
+				sol = lcp.lemkelcp(lcp_A,lcp_q)
+
+				print(sol[2])
+				if sol[2] == 'Solution Found':
+					fn = sol[0][0:p] * (1+coef_rest)
+					fd = sol[0][p:p+p*d]
+					val = dt* (N_lcp @ fn + B_lcp@fd)
+					return np.reshape(val, (n,)), True
+				elif sol[2] == 'Secondary ray found':
+					# it is the detaching case where there is contact but the collision is moving apart
+					return np.zeros((n,)), True
+				else:
+					return np.zeros((n,)), True
+
+			else:
+				# since no collision takes place now here is how we will obtain the torque values
+				return np.zeros((n,)), False
+		else:
+			# assuming we have switched off the collision interactoin
+			# then we just need to solve two equations----
+			# 1) P @ v_new = qdot_des
+			# 2) Dq@v_new - Dq@v_old = dt*(np.tranpose(P)@tau - C - phi)
+			v_final = np.zeros((n,))
+			diff = num_dof- num_actuated_dof
+			A_11 = Dq[0:diff,0:diff]
+			A_12 = Dq[0:diff:,diff:]
+			v_final_rest = qdot_des
+			v_final_start = np.linalg.solve(A_11 , tau_star[0:diff] -A_12 @ v_final_rest)
+			v_final[diff:,] = qdot_des
+			v_final[0:diff,] = v_final_start
+			torque = P @ Dq @ v_final - P @ tau_star
+
+		actual_torque = np.transpose(P) @ torque
+
+		dqdt = v_final
+		q += dqdt*dt
+
+		self.q = q.copy()
+		self.dqdt = dqdt.copy()
+
+		t = self.t
+		self.t += dt
+
+		print("t: ", np.array([t]), "dqdt : ", dqdt)
+		self.update()
+		print("t: ", np.array([t]), "q : ", q)
+		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
+		print("t: ", np.array([t]), "C : ", C)	
+		print()
+
+		return on_ground
+
 	def advect(self, torque, dt):
 		on_ground = False
 		obj_list = self.obj_list

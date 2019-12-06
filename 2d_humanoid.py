@@ -59,43 +59,43 @@ def interpolate_acceleration(frames, dt):
 		accs.append(acc)
 	return accs
 
-# g = np.array([0,0,-10])
-g = np.array([0,0,0])
+g = np.array([0,0,-10])
+# g = np.array([0,0,0])
 # same axis of rotation
-origin=np.array([6,4,10,4], dtype=np.float32)
+origin=np.array([6,4,8,4], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
 
 # pobj_0.addChild(pobj_1)
 
 
-pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 6,4,10, 6,4,10,q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
+pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 6,4,8, 6,4,8,q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
 pobj_0.setMass(0)
 pobj_0.showText = True
-pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 6,4,10, 6,4,10,q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
+pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 6,4,8, 6,4,8,q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
 pobj_1.setMass(0)
 pobj_0.addChild(pobj_1)
 
-lobj_1 = RevoluteJoint.RevoluteJoint('lobj_1', 6,4,10, 10,4,10, x_length=4, x_alpha=0,z_length=0, color="pink")
+lobj_1 = RevoluteJoint.RevoluteJoint('lobj_1', 6,4,8, 10,4,8, x_length=4, x_alpha=0,z_length=0, color="pink")
 lobj_1.showText = True
 pobj_1.addChild(lobj_1)
 
-lobj_2 = RevoluteJoint.RevoluteJoint('lobj_2', 10,4,10, 14,4,10, x_length=4, x_alpha=0,z_length=0, color="cyan")
+lobj_2 = RevoluteJoint.RevoluteJoint('lobj_2', 10,4,8, 14,4,8, x_length=4, x_alpha=0,z_length=0, color="cyan")
 lobj_2.showText = True
 lobj_1.addChild(lobj_2)
 
-lobj_3 = RevoluteJoint.RevoluteJoint('lobj_3', 14,4,10, 15,4,10, x_length=1, x_alpha=0,z_length=0, color="orange")
+lobj_3 = RevoluteJoint.RevoluteJoint('lobj_3', 14,4,8, 15,4,8, x_length=1, x_alpha=0,z_length=0, color="orange")
 lobj_3.showText = True
 lobj_2.addChild(lobj_3)
 
-robj_1 = RevoluteJoint.RevoluteJoint('robj_1', 6,4,10, 10,4,10, x_length=4, x_alpha=0,z_length=0, color="pink")
+robj_1 = RevoluteJoint.RevoluteJoint('robj_1', 6,4,8, 10,4,8, x_length=4, x_alpha=0,z_length=0, color="pink")
 robj_1.showText = True
 pobj_1.addChild(robj_1)
 
-robj_2 = RevoluteJoint.RevoluteJoint('robj_2', 10,4,10, 14,4,10, x_length=4, x_alpha=0,z_length=0, color="cyan")
+robj_2 = RevoluteJoint.RevoluteJoint('robj_2', 10,4,8, 14,4,8, x_length=4, x_alpha=0,z_length=0, color="cyan")
 robj_2.showText = True
 robj_1.addChild(robj_2)
 
-robj_3 = RevoluteJoint.RevoluteJoint('robj_3', 14,4,10, 15,4,10, x_length=1, x_alpha=0,z_length=0, color="orange")
+robj_3 = RevoluteJoint.RevoluteJoint('robj_3', 14,4,8, 15,4,8, x_length=1, x_alpha=0,z_length=0, color="orange")
 robj_3.showText = True
 robj_2.addChild(robj_3)
 
@@ -206,45 +206,13 @@ if __name__ == '__main__':
 	fps = 20
 	frame_index = 0
 	while True:
-		# # animate world with constant poses
-		# if switch == 0: 
-		# 	pose = contact_pose
-		# elif switch == 1: 
-		# 	pose = down_pose
-		# elif switch == 2: 
-		# 	pose = passing_pose
-		# elif switch == 3: 
-		# 	pose = up_pose
-		# elif switch == 4: 
-		# 	pose = rcontact_pose
-		# elif switch == 5: 
-		# 	pose = rdown_pose
-		# elif switch == 6: 
-		# 	pose = rpassing_pose
-		# elif switch == 7: 
-		# 	pose = rup_pose			
-
-
-		# frame_count+=frame_rate
-		# if frame_count>fps:
-		# 	world.setQ(pose)
-		# 	switch = (switch + 1) % num_poses
-		# 	frame_count = 0
-		# 	print('new switch is ', switch)
-
 		# animate interpolated frames
 		world.setQ(new_frames[frame_index])
 		# world.setdqdt(vel_frames[np.int(np.floor(frame_index))]*(1-dt) + vel_frames[np.int(np.floor(frame_index))+1]*dt)
-		world.setdqdt(vel_frames[frame_index])
-		frame_index = (frame_index + 1) % len(new_frames)
-		# frame_index = (frame_index + dt) % len(new_frames)
-		# print(world.t, (np.int(np.floor(frame_index))))
-		# print(world.t, vel_frames[np.int(np.floor(frame_index))] )
+		# world.setdqdt()
 
-		if on_ground:
-			on_ground = world.advect(torque, dt/4)
-		else:
-			on_ground = world.advect(torque, dt)
+		world.iadvect(vel_frames[frame_index][2:], dt)
+		frame_index = (frame_index + 1) % len(new_frames)
 		world.update()
 
 		# debug statemetns
@@ -265,3 +233,36 @@ if __name__ == '__main__':
 # # plt.plot(t_list, q2_list, color='b')
 # plt.show()
 
+
+# ####### TRASH CODE ###############
+
+if on_ground:
+	on_ground = world.advect(torque, dt/4)
+else:
+	on_ground = world.advect(torque, dt)
+
+# # animate world with constant poses
+# if switch == 0: 
+# 	pose = contact_pose
+# elif switch == 1: 
+# 	pose = down_pose
+# elif switch == 2: 
+# 	pose = passing_pose
+# elif switch == 3: 
+# 	pose = up_pose
+# elif switch == 4: 
+# 	pose = rcontact_pose
+# elif switch == 5: 
+# 	pose = rdown_pose
+# elif switch == 6: 
+# 	pose = rpassing_pose
+# elif switch == 7: 
+# 	pose = rup_pose			
+
+
+# frame_count+=frame_rate
+# if frame_count>fps:
+# 	world.setQ(pose)
+# 	switch = (switch + 1) % num_poses
+# 	frame_count = 0
+# 	print('new switch is ', switch)
