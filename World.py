@@ -56,7 +56,6 @@ def get_origin_coordinates(obj_list):
 		matrix = np.eye(4)
 		node = obj_list[i]
 		while not node is None:
-			# pdb.set_trace()
 			matrix = node.get_transformation_matrix() @ matrix
 			node = node.parent
 		O[i+1] = (matrix @ np.append([O[0]],1))[0:3]
@@ -327,8 +326,6 @@ def evaluate_Dq_derivative(obj_list):
 					else:
 						dJvi[:,j] = np.zeros((3))
 
-			# if k==2 or k==4:
-			# 	pdb.set_trace()
 			C[:,:,k] += mi * (np.transpose(Jvi) @ dJvi + np.transpose(dJvi) @ Jvi)
 			# Dq += mi* (np.transpose(Jvi) @ Jvi)
 
@@ -563,11 +560,15 @@ class World(object):
 			for j in range(num_actuated_dof):
 				if i==j:
 					P[i,j+diff] = 1
+
+		X = np.linalg.inv(P @ np.linalg.inv(Dq) @ np.transpose(P))
+		Y = X @ P @ np.linalg.inv(Dq)
 		torque = np.zeros((num_actuated_dof,))
 		v_new = np.zeros((num_dof,))
 		# with the constraint that P @ v_final = q_des
 
 		# don't make it zero numerical unstability
+		f_external = np.zeros((n,))
 		if collision:
 			obj_indices, contact_points, contact_normals, point_affect_list = detectCollisions(obj_list)
 			if len(contact_points) > 0:
@@ -581,11 +582,9 @@ class World(object):
 				N_lcp = np.zeros((n,p))
 				B_lcp = np.zeros((n,d*p))
 				E = np.zeros((p*d,p))
-
 				for i in range(p):
 					E[i*d:(i+1)*d,i] = np.ones((d,))
 
-				pdb.set_trace()
 
 				for i in obj_indices: 
 					obj = obj_list[i]
@@ -604,20 +603,27 @@ class World(object):
 					d = number_of_basis_vectors
 					B_lcp[:,d*list_index:d*(list_index+1)] = B_lcp_i
 
-				lcp_A11 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp)
-				lcp_A12 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ B_lcp)
+				lcp_A11 = dt*( (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp) -
+							(np.transpose(N_lcp) @ np.linalg.inv(Dq) @ np.transpose(P) @ Y @ N_lcp ) )
+				lcp_A12 = dt*( (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ B_lcp)  -
+							(np.transpose(N_lcp) @ np.linalg.inv(Dq) @ np.transpose(P) @ Y @ B_lcp ) )
 				lcp_A13 = np.zeros((p, p))
 
-				lcp_A21 = dt* (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ N_lcp)
-				lcp_A22 = dt* (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ B_lcp)
+				lcp_A21 = dt*( (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ N_lcp) - 
+							(np.transpose(B_lcp) @ np.linalg.inv(Dq) @ np.transpose(P) @ Y @ N_lcp ) )
+				lcp_A22 = dt*( (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ B_lcp) - 
+							(np.transpose(B_lcp) @ np.linalg.inv(Dq) @ np.transpose(P) @ Y @ B_lcp ) )
 				lcp_A23 = E
 
 				lcp_A31 = np.eye(p) * coef_fric
 				lcp_A32 = -np.transpose(E)
 				lcp_A33 = np.zeros((p, p))
 
-				lcp_q1 = np.transpose(N_lcp) @ np.linalg.inv(Dq) @ tau_star
-				lcp_q2 = np.transpose(B_lcp) @ np.linalg.inv(Dq) @ tau_star
+				lcp_q1 = np.transpose(N_lcp) @ np.linalg.inv(Dq) @ tau_star + \
+						np.transpose(N_lcp) @ np.linalg.inv(Dq) @ np.transpose(P) @ ( X@qdot_des - Y@tau_star )
+
+				lcp_q2 = np.transpose(B_lcp) @ np.linalg.inv(Dq) @ tau_star + \
+						np.transpose(B_lcp) @ np.linalg.inv(Dq) @ np.transpose(P) @ ( X@qdot_des - Y@tau_star )
 				lcp_q3 = np.zeros((p,1))
 				# other friction terms will also come for now ignoring
 				dim = 2*p + p*d
@@ -639,46 +645,42 @@ class World(object):
 				lcp_q[p:p+p*d] = np.reshape(lcp_q2, (p*d,1))
 				lcp_q[p+p*d:2*p+p*d] = np.reshape(lcp_q3, (p,1))
 
+				# pdb.set_trace()
 				sol = lcp.lemkelcp(lcp_A,lcp_q)
 
 				print(sol[2])
 				if sol[2] == 'Solution Found':
 					fn = sol[0][0:p] * (1+coef_rest)
 					fd = sol[0][p:p+p*d]
-					val = dt* (N_lcp @ fn + B_lcp@fd)
-					return np.reshape(val, (n,)), True
+					f_external = dt*(N_lcp @ fn + B_lcp@fd)
+					print(f_external)
+					# pdb.set_trace()
 				elif sol[2] == 'Secondary ray found':
 					# it is the detaching case where there is contact but the collision is moving apart
-					return np.zeros((n,)), True
+					f_external = np.zeros((n,))
 				else:
-					return np.zeros((n,)), True
+					f_external = np.zeros((n,))
 
 			else:
 				# since no collision takes place now here is how we will obtain the torque values
 				# thus solution is similar to the case below
-				v_final = np.zeros((n,))
-				diff = num_dof- num_actuated_dof
-				A_11 = Dq[0:diff,0:diff]
-				A_12 = Dq[0:diff:,diff:]
-				v_final_rest = qdot_des
-				v_final_start = np.linalg.solve(A_11 , tau_star[0:diff] -A_12 @ v_final_rest)
-				v_final[diff:,] = qdot_des
-				v_final[0:diff,] = v_final_start
-				torque = P @ Dq @ v_final - P @ tau_star
+				f_external = np.zeros((n,))
 		else:
-			# assuming we have switched off the collision interactoin
-			# then we just need to solve two equations----
-			# 1) P @ v_new = qdot_des
-			# 2) Dq@v_new - Dq@v_old = dt*(np.tranpose(P)@tau - C - phi)
-			v_final = np.zeros((n,))
-			diff = num_dof- num_actuated_dof
-			A_11 = Dq[0:diff,0:diff]
-			A_12 = Dq[0:diff:,diff:]
-			v_final_rest = qdot_des
-			v_final_start = np.linalg.solve(A_11 , tau_star[0:diff] -A_12 @ v_final_rest)
-			v_final[diff:,] = qdot_des
-			v_final[0:diff,] = v_final_start
-			torque = (P @ Dq @ v_final - P @ tau_star) / dt
+			f_external = np.zeros((n,))
+		# assuming we have switched off the collision interactoin
+		# then we just need to solve two equations----
+		# 1) P @ v_new = qdot_des
+		# 2) Dq@v_new - Dq@v_old = dt*(np.tranpose(P)@tau + f_ext - C - phi)
+		tau_star = tau_star + f_external
+		v_final = np.zeros((n,))
+		diff = num_dof- num_actuated_dof
+		A_11 = Dq[0:diff,0:diff]
+		A_12 = Dq[0:diff:,diff:]
+		v_final_rest = qdot_des
+		v_final_start = np.linalg.solve(A_11 , tau_star[0:diff] -A_12 @ v_final_rest)
+		v_final[0:diff,] = v_final_start
+		v_final[diff:,] = v_final_rest
+		torque = (P @ Dq @ v_final - P @ tau_star) / dt
 
 		actual_torque = np.transpose(P) @ torque
 		torque_list.append(actual_torque)
@@ -696,9 +698,9 @@ class World(object):
 		self.update()
 		print("t: ", np.array([t]), "q : ", q)
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
-		print("t: ", np.array([t]), "Phi : ", phi)
-		print("t: ", np.array([t]), "C : ", C)
-		print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
+		# print("t: ", np.array([t]), "Phi : ", phi)
+		# print("t: ", np.array([t]), "C : ", C)
+		# print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
 		print()
 
 		return torque_list
@@ -835,17 +837,11 @@ class World(object):
 		print("t: ", np.array([t]), "torque : ", torque)
 		print("t: ", np.array([t]), "dqdt : ", dqdt)
 		self.update()
-		# Jci = evaluateJacobian(obj_list, 2, -1)
-		# Jvi = evaluateJacobian(obj_list, 2, 1)
-		# print("t: ", np.array([t]), "com vel : ", Jci@dqdt)
-		# print("t: ", np.array([t]), "end vel : ", Jvi@dqdt)
-		# print("t: ", np.array([t]), "pe : ", np.array([pe]))
-		# print("t: ", np.array([t]), "ke : ", np.array([ke]))
 		print("t: ", np.array([t]), "q : ", q)
-		print("t: ", np.array([t]), "C : ", C)	
-		print("t: ", np.array([t]), "Phi : ", phi)
+		# print("t: ", np.array([t]), "C : ", C)	
+		# print("t: ", np.array([t]), "Phi : ", phi)
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
-		print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
+		# print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
 		# print("t: ", np.array([t]), "Dq_2 : \n", Dq_derivative[:,:,2])	
 		# print("t: ", np.array([t]), "Dq_4 : \n", Dq_derivative[:,:,4])	
 		# print("t: ", np.array([t]), "rhs : ", rhs)

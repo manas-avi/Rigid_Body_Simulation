@@ -129,7 +129,7 @@ for i in range(n):
 
 
 if __name__ == '__main__':
-	dt = 0.01*5
+	dt = 0.01
 	world = World.World(obj_list)
 
 	# rest pose
@@ -181,12 +181,13 @@ if __name__ == '__main__':
 
 	world.set_link_origin(origin)
 	world.set_gravity(g)
-	world.isCollision = False
+	world.isCollision = True
 
 
 	t_list=[]
 	# e_list=[]
 	# q_list=[]
+	# dqdt_diff_list = []
 
 	num_poses = 8
 
@@ -198,7 +199,6 @@ if __name__ == '__main__':
 	frame_index = 0
 	torque_list = []
 	save_torque_value = True
-	# dqdt_diff_list = []
 	while True:
 		# animate interpolated frames
 		world.setQ(new_frames[frame_index])
@@ -215,12 +215,11 @@ if __name__ == '__main__':
 		world.update()
 
 		# debug statemetns
-		t_list.append(world.t)
+		# t_list.append(world.t)
 		# e_list.append(energy)
-
 		world.render()
 
-		if world.t>2:
+		if world.t>5:
 			if save_torque_value:
 				np.save('torque_list.npy', np.array(torque_list))
 			break
