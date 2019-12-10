@@ -11,7 +11,7 @@ import lemkelcp as lcp
 np.set_printoptions(suppress=True)
 
 
-def createBasisVector(contact_normal, contact_point, num_vectors):
+def createBasisVector(contact_normal, num_vectors):
 	t1 = np.cross(contact_normal, np.array([1,0,0])) # some direction 
 	# since it is a cross product it will always be perpendicular to normal
 	t2 = np.cross(t1, contact_normal) # some direction 
@@ -488,7 +488,7 @@ class World(object):
 		plt.ion()
 		self.fig = plt.figure()
 		self.ax = plt.gca(projection="3d")
-		self.ax.view_init(0, -90)
+		self.ax.view_init(-2, -90)
 		self.ax.set_xlim(0,15)
 		self.ax.set_ylim(0,15)
 		self.ax.set_zlim(0,15)
@@ -509,6 +509,7 @@ class World(object):
 		self.t = 0
 
 		self.isCollision = True
+		self.number_of_basis_vectors = 4
 
 	def set_gravity(self, gravity):
 		self.gravity = gravity
@@ -563,7 +564,6 @@ class World(object):
 
 		X = np.linalg.inv(P @ np.linalg.inv(Dq) @ np.transpose(P))
 		Y = X @ P @ np.linalg.inv(Dq)
-		torque = np.zeros((num_actuated_dof,))
 		v_new = np.zeros((num_dof,))
 		# with the constraint that P @ v_final = q_des
 
@@ -571,12 +571,12 @@ class World(object):
 		f_external = np.zeros((n,))
 		if collision:
 			obj_indices, contact_points, contact_normals, point_affect_list = detectCollisions(obj_list)
-			if len(contact_points) > 0:
+			num_contact_points = len(contact_points)
+			if num_contact_points > 0:
 				# collision is detected therefore apply collision constraints
-				number_of_basis_vectors = 4
+				number_of_basis_vectors = self.number_of_basis_vectors
 				coef_rest = 0.0
 				coef_fric = self.friction
-				num_contact_points = len(contact_points)
 				d = number_of_basis_vectors
 				p = num_contact_points
 				N_lcp = np.zeros((n,p))
@@ -584,7 +584,6 @@ class World(object):
 				E = np.zeros((p*d,p))
 				for i in range(p):
 					E[i*d:(i+1)*d,i] = np.ones((d,))
-
 
 				for i in obj_indices: 
 					obj = obj_list[i]
@@ -598,7 +597,7 @@ class World(object):
 					N_lcp_i = np.transpose(Jvi) @ contact_normal
 					N_lcp[:,list_index] = N_lcp_i
 
-					D_i = createBasisVector(contact_normal, contact_point, d)
+					D_i = createBasisVector(contact_normal, d)
 					B_lcp_i = np.transpose(Jvi) @ D_i
 					d = number_of_basis_vectors
 					B_lcp[:,d*list_index:d*(list_index+1)] = B_lcp_i
@@ -644,8 +643,6 @@ class World(object):
 				lcp_q[p:p+p*d] = np.reshape(lcp_q2, (p*d,1))
 				lcp_q[p+p*d:2*p+p*d] = np.reshape(lcp_q3, (p,1))
 
-				# if self.t > 2:
-				# 	pdb.set_trace()
 				sol = lcp.lemkelcp(lcp_A,lcp_q)
 
 				print(sol[2])
@@ -654,7 +651,6 @@ class World(object):
 					fn = sol[0][0:p] * (1+coef_rest)
 					fd = sol[0][p:p+p*d]
 					f_external = dt*(N_lcp @ fn + B_lcp@fd)
-					# pdb.set_trace()
 				elif sol[2] == 'Secondary ray found':
 					# it is the detaching case where there is contact but the collision is moving apart
 					f_external = np.zeros((n,))
@@ -671,18 +667,12 @@ class World(object):
 		# then we just need to solve two equations----
 		# 1) P @ v_new = qdot_des
 		# 2) Dq@v_new - Dq@v_old = dt*(np.tranpose(P)@tau + f_ext - C - phi)
-		tau_star = tau_star + f_external
-		v_final = np.zeros((n,))
-		diff = num_dof- num_actuated_dof
-		A_11 = Dq[0:diff,0:diff]
-		A_12 = Dq[0:diff:,diff:]
-		v_final_rest = qdot_des
-		v_final_start = np.linalg.solve(A_11 , tau_star[0:diff] -A_12 @ v_final_rest)
-		v_final[0:diff,] = v_final_start
-		v_final[diff:,] = v_final_rest
-		torque = (P @ Dq @ v_final - P @ tau_star) / dt
 
-		actual_torque = np.transpose(P) @ torque
+
+		tau_star = tau_star + f_external
+		v_final = np.linalg.inv(Dq) @ (tau_star + np.transpose(P)@ ( X@qdot_des - Y@(tau_star) ) )
+		actual_torque = np.transpose(P) @ (X @ (qdot_des/dt) - Y@ (tau_star/dt))
+
 		dqdt = v_final
 		q += dqdt*dt
 
@@ -700,7 +690,6 @@ class World(object):
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
 		print("t: ", np.array([t]), "C : ", C)
 		print("t: ", np.array([t]), "Phi : ", phi)
-		# print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
 		print()
 
 		return actual_torque
@@ -723,108 +712,103 @@ class World(object):
 		Dq_derivative = evaluate_Dq_derivative(obj_list) # its is matrix of shape - nXnXn
 		C = createCArray(Dq_derivative, dqdt)
 
-		rhs = torque - phi - C
-		rhs = rhs * dt
+		tau_star = (torque - phi - C)*dt + Dq @ dqdt
 
-		def collision_response():
-			coef_rest = 0.0
-			# coef_fric = 0.001
-			# coef_fric = 1.19
-			coef_fric = self.friction
-			# because of numerics answer is slightly greater than 1
-			# otherwise optimal value for mu is 1.0
+		coef_rest = 0.0
+		coef_fric = self.friction
+		cr = np.zeros((n,))
+		# don't make it zero numerical unstability
+		number_of_basis_vectors = self.number_of_basis_vectors
+		vel_diff = np.zeros((n,))
+		if collision:
+			obj_indices, contact_points, contact_normals, point_affect_list = detectCollisions(obj_list)
+			if len(contact_points) > 0:
+				# collision is detected therefore apply collision constraints
+				num_contact_points = len(contact_points)
+				d = number_of_basis_vectors
+				p = num_contact_points
+				N_lcp = np.zeros((n,p))
+				B_lcp = np.zeros((n,p*d))
+				E = np.zeros((p*d,p))
+				for i in range(p):
+					E[i*d:(i+1)*d,i] = np.ones((d,))
 
-			# don't make it zero numerical unstability
-			number_of_basis_vectors = 4
-			vel_diff = np.zeros((n,))
-			tau_star = rhs + Dq @ dqdt
-			if collision:
-				obj_indices, contact_points, contact_normals, point_affect_list = detectCollisions(obj_list)
-				if len(contact_points) > 0:
-					# collision is detected therefore apply collision constraints
-					num_contact_points = len(contact_points)
+				for i in obj_indices: 
+					obj = obj_list[i]
+					list_index = obj_indices.index(i)
+					contact_point = contact_points[list_index]
+					contact_normal = contact_normals[list_index]
+					point_affect = point_affect_list[list_index]
+					# chain_index = chain_index_list[list_index]
+					Jvi = evaluateJacobian(obj_list, i, point_affect)
+					# solve the constraint equation ---> using LCP
+					N_lcp_i = np.transpose(Jvi) @ contact_normal
+					N_lcp[:,list_index] = N_lcp_i
+
+					D_i = createBasisVector(contact_normal, d)
+					B_lcp_i = np.transpose(Jvi) @ D_i
 					d = number_of_basis_vectors
-					p = num_contact_points
-					N_lcp = np.zeros((n,p))
-					B_lcp = np.zeros((n,d*p))
-					E = np.zeros((p*d,p))
-					for i in range(p):
-						E[i*d:(i+1)*d,i] = np.ones((d,))
+					B_lcp[:,d*list_index:d*(list_index+1)] = B_lcp_i
 
-					for i in obj_indices: 
-						obj = obj_list[i]
-						list_index = obj_indices.index(i)
-						contact_point = contact_points[list_index]
-						contact_normal = contact_normals[list_index]
-						point_affect = point_affect_list[list_index]
-						# chain_index = chain_index_list[list_index]
-						Jvi = evaluateJacobian(obj_list, i, point_affect)
-						# solve the constraint equation ---> using LCP
-						N_lcp_i = np.transpose(Jvi) @ contact_normal
-						N_lcp[:,list_index] = N_lcp_i
+				lcp_A11 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp)
+				lcp_A12 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ B_lcp)
+				lcp_A13 = np.zeros((p, p))
 
-						D_i = createBasisVector(contact_normal, contact_point, d)
-						B_lcp_i = np.transpose(Jvi) @ D_i
-						d = number_of_basis_vectors
-						B_lcp[:,d*list_index:d*(list_index+1)] = B_lcp_i
+				lcp_A21 = dt* (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ N_lcp)
+				lcp_A22 = dt* (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ B_lcp)
+				lcp_A23 = E
 
-					lcp_A11 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ N_lcp)
-					lcp_A12 = dt* (np.transpose(N_lcp) @ np.linalg.inv(Dq) @ B_lcp)
-					lcp_A13 = np.zeros((p, p))
+				lcp_A31 = np.eye(p) * coef_fric
+				lcp_A32 = -np.transpose(E)
+				lcp_A33 = np.zeros((p, p))
 
-					lcp_A21 = dt* (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ N_lcp)
-					lcp_A22 = dt* (np.transpose(B_lcp) @ np.linalg.inv(Dq) @ B_lcp)
-					lcp_A23 = E
+				lcp_q1 = np.transpose(N_lcp) @ np.linalg.inv(Dq) @ tau_star
+				lcp_q2 = np.transpose(B_lcp) @ np.linalg.inv(Dq) @ tau_star
+				lcp_q3 = np.zeros((p,1))
+				# other friction terms will also come for now ignoring
+				dim = 2*p + p*d
+				lcp_A = np.zeros((dim,dim))
+				lcp_A[0:p,0:p] = lcp_A11
+				lcp_A[0:p,p:p+p*d] = lcp_A12
+				lcp_A[0:p,p+p*d:2*p+p*d] = lcp_A13
 
-					lcp_A31 = np.eye(p) * coef_fric
-					lcp_A32 = -np.transpose(E)
-					lcp_A33 = np.zeros((p, p))
+				lcp_A[p:p+p*d,0:p] = lcp_A21
+				lcp_A[p:p+p*d,p:p+p*d] = lcp_A22
+				lcp_A[p:p+p*d,p+p*d:2*p+p*d] = lcp_A23
 
-					lcp_q1 = np.transpose(N_lcp) @ np.linalg.inv(Dq) @ tau_star
-					lcp_q2 = np.transpose(B_lcp) @ np.linalg.inv(Dq) @ tau_star
-					lcp_q3 = np.zeros((p,1))
-					# other friction terms will also come for now ignoring
-					dim = 2*p + p*d
-					lcp_A = np.zeros((dim,dim))
-					lcp_A[0:p,0:p] = lcp_A11
-					lcp_A[0:p,p:p+p*d] = lcp_A12
-					lcp_A[0:p,p+p*d:2*p+p*d] = lcp_A13
+				lcp_A[p+p*d:2*p+p*d,0:p] = lcp_A31
+				lcp_A[p+p*d:2*p+p*d,p:p+p*d] = lcp_A32
+				lcp_A[p+p*d:2*p+p*d,p+p*d:2*p+p*d] = lcp_A33
 
-					lcp_A[p:p+p*d,0:p] = lcp_A21
-					lcp_A[p:p+p*d,p:p+p*d] = lcp_A22
-					lcp_A[p:p+p*d,p+p*d:2*p+p*d] = lcp_A23
+				lcp_q = np.zeros((2*p+p*d,1))
+				lcp_q[0:p] = np.reshape(lcp_q1, (p,1))
+				lcp_q[p:p+p*d] = np.reshape(lcp_q2, (p*d,1))
+				lcp_q[p+p*d:2*p+p*d] = np.reshape(lcp_q3, (p,1))
 
-					lcp_A[p+p*d:2*p+p*d,0:p] = lcp_A31
-					lcp_A[p+p*d:2*p+p*d,p:p+p*d] = lcp_A32
-					lcp_A[p+p*d:2*p+p*d,p+p*d:2*p+p*d] = lcp_A33
+				sol = lcp.lemkelcp(lcp_A,lcp_q)
 
-					lcp_q = np.zeros((2*p+p*d,1))
-					lcp_q[0:p] = np.reshape(lcp_q1, (p,1))
-					lcp_q[p:p+p*d] = np.reshape(lcp_q2, (p*d,1))
-					lcp_q[p+p*d:2*p+p*d] = np.reshape(lcp_q3, (p,1))
-
-					sol = lcp.lemkelcp(lcp_A,lcp_q)
-
-					print(sol[2])
-					if sol[2] == 'Solution Found':
-						fn = sol[0][0:p] * (1+coef_rest)
-						fd = sol[0][p:p+p*d]
-						val = dt* (N_lcp @ fn + B_lcp@fd)
-						return np.reshape(val, (n,)), True
-					elif sol[2] == 'Secondary ray found':
-						# it is the detaching case where there is contact but the collision is moving apart
-						return np.zeros((n,)), True
-					else:
-						return np.zeros((n,)), True
-
+				print(sol[2])
+				print(sol[0])
+				if sol[2] == 'Solution Found':
+					fn = sol[0][0:p] * (1+coef_rest)
+					fd = sol[0][p:p+p*d]
+					val = dt* (N_lcp @ fn + B_lcp@fd)
+					cr = np.reshape(val, (n,))
+				elif sol[2] == 'Secondary ray found':
+					# it is the detaching case where there is contact but the collision is moving apart
+					cr = np.zeros((n,))
 				else:
-					return np.zeros((n,)), False
-			else:
-				return np.zeros((n,)), False
+					cr = np.zeros((n,))
 
-		cr, on_ground = collision_response()
-		rhs += cr
-		new_momentum = rhs + Dq @ dqdt
+			else:
+				cr = np.zeros((n,))
+		else:
+			cr = np.zeros((n,))
+
+
+
+		tau_star += cr
+		new_momentum = tau_star
 		dqdt = np.linalg.solve(Dq, new_momentum )
 		q += dqdt*dt
 
@@ -843,9 +827,6 @@ class World(object):
 		print("t: ", np.array([t]), "C : ", C)	
 		print("t: ", np.array([t]), "Phi : ", phi)
 		# print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
-		# print("t: ", np.array([t]), "Dq_2 : \n", Dq_derivative[:,:,2])	
-		# print("t: ", np.array([t]), "Dq_4 : \n", Dq_derivative[:,:,4])	
-		# print("t: ", np.array([t]), "rhs : ", rhs)
 		print()
 
 		return on_ground

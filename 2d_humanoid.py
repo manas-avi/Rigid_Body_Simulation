@@ -5,7 +5,7 @@ import World
 import matplotlib.pyplot as plt
 import pdb
 import os
-
+import argparse
 
 def readFile(filename):
 
@@ -57,44 +57,43 @@ def interpolate_acceleration(frames, dt):
 	return accs
 
 g = np.array([0,0,-10])
-# g = np.array([0,0,-100])
 # g = np.array([0,0,0])
 # same axis of rotation
-origin=np.array([6,4,9,4], dtype=np.float32)
+origin=np.array([6,4,9.1,4], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
 
 # pobj_0.addChild(pobj_1)
 
 
-pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 6,4,9, 6,4,9,q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
+pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 6,4,9.1, 6,4,9.1,q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
 pobj_0.setMass(0)
 # pobj_0.showText = True
-pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 6,4,9, 6,4,9,q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
+pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 6,4,9.1, 6,4,9.1,q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
 pobj_1.setMass(0)
 pobj_1.showText = True
 pobj_0.addChild(pobj_1)
 
-lobj_1 = RevoluteJoint.RevoluteJoint('lobj_1', 6,4,9, 10,4,9, x_length=4, x_alpha=0,z_length=0, color="pink")
+lobj_1 = RevoluteJoint.RevoluteJoint('lobj_1', 6,4,9.1, 10,4,9.1, x_length=4, x_alpha=0,z_length=0, color="pink")
 # lobj_1.showText = True
 pobj_1.addChild(lobj_1)
 
-lobj_2 = RevoluteJoint.RevoluteJoint('lobj_2', 10,4,9, 14,4,9, x_length=4, x_alpha=0,z_length=0, color="cyan")
+lobj_2 = RevoluteJoint.RevoluteJoint('lobj_2', 10,4,9.1, 14,4,9.1, x_length=4, x_alpha=0,z_length=0, color="cyan")
 lobj_2.showText = True
 lobj_1.addChild(lobj_2)
 
-lobj_3 = RevoluteJoint.RevoluteJoint('lobj_3', 14,4,9, 15,4,9, x_length=1, x_alpha=0,z_length=0, color="orange")
+lobj_3 = RevoluteJoint.RevoluteJoint('lobj_3', 14,4,9.1, 15,4,9.1, x_length=1, x_alpha=0,z_length=0, color="orange")
 lobj_3.showText = True
 lobj_2.addChild(lobj_3)
 
-robj_1 = RevoluteJoint.RevoluteJoint('robj_1', 6,4,9, 10,4,9, x_length=4, x_alpha=0,z_length=0, color="pink")
+robj_1 = RevoluteJoint.RevoluteJoint('robj_1', 6,4,9.1, 10,4,9.1, x_length=4, x_alpha=0,z_length=0, color="pink")
 # robj_1.showText = True
 pobj_1.addChild(robj_1)
 
-robj_2 = RevoluteJoint.RevoluteJoint('robj_2', 10,4,9, 14,4,9, x_length=4, x_alpha=0,z_length=0, color="cyan")
+robj_2 = RevoluteJoint.RevoluteJoint('robj_2', 10,4,9.1, 14,4,9.1, x_length=4, x_alpha=0,z_length=0, color="cyan")
 robj_2.showText = True
 robj_1.addChild(robj_2)
 
-robj_3 = RevoluteJoint.RevoluteJoint('robj_3', 14,4,9, 15,4,9, x_length=1, x_alpha=0,z_length=0, color="orange")
+robj_3 = RevoluteJoint.RevoluteJoint('robj_3', 14,4,9.1, 15,4,9.1, x_length=1, x_alpha=0,z_length=0, color="orange")
 robj_3.showText = True
 robj_2.addChild(robj_3)
 
@@ -118,12 +117,7 @@ for i in range(0,n):
 	obj_list[i].set_yaxis(axis_y)
 	obj_list[i].set_zaxis(axis_z)
 
-# torque = np.array([0], dtype=np.float32)
-# torque = np.array([0, 0], dtype=np.float32)
-# torque = np.array([1, 1], dtype=np.float32)
 torque = np.zeros((n,))
-# torque[-1] = 1
-# torque = np.array([0,0, 0, 0,0], dtype=np.float32)
 
 # set indices 
 for i in range(n):
@@ -131,6 +125,10 @@ for i in range(n):
 
 
 if __name__ == '__main__':
+	parser = argparse.ArgumentParser()
+	parser.add_argument("-s", "--state", type=str,
+                    help="state of the simulator fd or id")
+	args = parser.parse_args()
 	dt = 0.01
 	world = World.World(obj_list)
 
@@ -207,9 +205,16 @@ if __name__ == '__main__':
 	global_frame_index = 0
 	torque_list = []
 	save_torque_value = True
+	state = args.state
+	if state == None:
+		state = 'id'
+
 	while True:
 		# animate interpolated frames
-		if 'torque_list.npy' in os.listdir('./'):
+		if state == 'fd':
+			if not 'torque_list.npy' in os.listdir('./'):
+				print('File not found ')
+				exit()
 			save_torque_value = False
 			torque_list = np.load('torque_list.npy')
 			torque = torque_list[frame_index]
@@ -233,10 +238,6 @@ if __name__ == '__main__':
 			if save_torque_value:
 				np.save('torque_list.npy', np.array(torque_list))
 			break
-
-	
-
-
 
 exit()
 # plt.title('energy graph')
