@@ -162,7 +162,7 @@ class PrismaticJoint(object):
 	def drawObject(self, ax):
 		if self.isMovable and self.showText:
 			w = self.dq[0]
-			# ax.text(self.lineX[0], self.lineY[0], self.lineZ[0], '  w:' + str(round(w, 4)) ) 
+			ax.text(self.lineX[0], self.lineY[0], self.lineZ[0], '  w:' + str(round(w, 4)) ) 
 		# ax.plot( self.lineX,self.lineY, self.lineZ, marker = 'o', color=self.color)
 
 		if self.showCom:

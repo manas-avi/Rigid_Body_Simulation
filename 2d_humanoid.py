@@ -41,7 +41,7 @@ def interpolate_velocities(frames, dt):
 	dof = frames[0].shape[0]
 	vels = [np.zeros((dof,))]
 	for i in range(n-1):
-		vel = (frames[i+1] - frames[i])
+		vel = (frames[i+1] - frames[i])/dt
 		vels.append(vel)
 	vels[0] = vels[1]
 	return vels
@@ -57,42 +57,44 @@ def interpolate_acceleration(frames, dt):
 	return accs
 
 g = np.array([0,0,-10])
+# g = np.array([0,0,-100])
 # g = np.array([0,0,0])
 # same axis of rotation
-origin=np.array([6,4,8,4], dtype=np.float32)
+origin=np.array([6,4,9,4], dtype=np.float32)
 # Always ensure that stating axis is always inclined with cartesian axis
 
 # pobj_0.addChild(pobj_1)
 
 
-pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 6,4,8, 6,4,8,q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
+pobj_0 = PrismaticJoint.PrismaticJoint('pobj_0', 6,4,9, 6,4,9,q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="red")
 pobj_0.setMass(0)
-pobj_0.showText = True
-pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 6,4,8, 6,4,8,q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
+# pobj_0.showText = True
+pobj_1 = PrismaticJoint.PrismaticJoint('pobj_1', 6,4,9, 6,4,9,q_angle=np.pi/2, x_alpha=np.pi/2,r_length=0, color="blue")
 pobj_1.setMass(0)
+pobj_1.showText = True
 pobj_0.addChild(pobj_1)
 
-lobj_1 = RevoluteJoint.RevoluteJoint('lobj_1', 6,4,8, 10,4,8, x_length=4, x_alpha=0,z_length=0, color="pink")
-lobj_1.showText = True
+lobj_1 = RevoluteJoint.RevoluteJoint('lobj_1', 6,4,9, 10,4,9, x_length=4, x_alpha=0,z_length=0, color="pink")
+# lobj_1.showText = True
 pobj_1.addChild(lobj_1)
 
-lobj_2 = RevoluteJoint.RevoluteJoint('lobj_2', 10,4,8, 14,4,8, x_length=4, x_alpha=0,z_length=0, color="cyan")
+lobj_2 = RevoluteJoint.RevoluteJoint('lobj_2', 10,4,9, 14,4,9, x_length=4, x_alpha=0,z_length=0, color="cyan")
 lobj_2.showText = True
 lobj_1.addChild(lobj_2)
 
-lobj_3 = RevoluteJoint.RevoluteJoint('lobj_3', 14,4,8, 15,4,8, x_length=1, x_alpha=0,z_length=0, color="orange")
+lobj_3 = RevoluteJoint.RevoluteJoint('lobj_3', 14,4,9, 15,4,9, x_length=1, x_alpha=0,z_length=0, color="orange")
 lobj_3.showText = True
 lobj_2.addChild(lobj_3)
 
-robj_1 = RevoluteJoint.RevoluteJoint('robj_1', 6,4,8, 10,4,8, x_length=4, x_alpha=0,z_length=0, color="pink")
-robj_1.showText = True
+robj_1 = RevoluteJoint.RevoluteJoint('robj_1', 6,4,9, 10,4,9, x_length=4, x_alpha=0,z_length=0, color="pink")
+# robj_1.showText = True
 pobj_1.addChild(robj_1)
 
-robj_2 = RevoluteJoint.RevoluteJoint('robj_2', 10,4,8, 14,4,8, x_length=4, x_alpha=0,z_length=0, color="cyan")
+robj_2 = RevoluteJoint.RevoluteJoint('robj_2', 10,4,9, 14,4,9, x_length=4, x_alpha=0,z_length=0, color="cyan")
 robj_2.showText = True
 robj_1.addChild(robj_2)
 
-robj_3 = RevoluteJoint.RevoluteJoint('robj_3', 14,4,8, 15,4,8, x_length=1, x_alpha=0,z_length=0, color="orange")
+robj_3 = RevoluteJoint.RevoluteJoint('robj_3', 14,4,9, 15,4,9, x_length=1, x_alpha=0,z_length=0, color="orange")
 robj_3.showText = True
 robj_2.addChild(robj_3)
 
@@ -147,7 +149,8 @@ if __name__ == '__main__':
 	# up pose
 	# world.setQ(np.array([0,0,7*np.pi/10,np.pi/2,-np.pi/3,    21*np.pi/20,np.pi/20,-2*np.pi/5], dtype=np.float32))	
 
-	rest_pose = np.array([0,0,np.pi,0,-np.pi/2,np.pi,0,-np.pi/2], dtype=np.float32)
+	rest_pose = np.array([0,0,np.pi,0,0,np.pi,0,0], dtype=np.float32)
+	# rest_pose = np.array([0,0,np.pi,0,-np.pi/2,np.pi,0,-np.pi/2], dtype=np.float32)
 	contact_pose = np.array([0,0,5*np.pi/6,np.pi/8,-3*np.pi/5,   11*np.pi/10, np.pi/10,-np.pi/2], dtype=np.float32)
 	down_pose = np.array([0,0,3*np.pi/4,np.pi/3,-np.pi/2,    19*np.pi/20,2*np.pi/5,-2*np.pi/5], dtype=np.float32)
 	passing_pose = np.array([0,0,5*np.pi/6,np.pi/3,-np.pi/3,    21*np.pi/20,np.pi/20,-3*np.pi/5], dtype=np.float32)
@@ -158,15 +161,18 @@ if __name__ == '__main__':
 	rpassing_pose = np.array([0,0,21*np.pi/20,np.pi/20,-3*np.pi/5,  5*np.pi/6,np.pi/3,-np.pi/3], dtype=np.float32)
 	rup_pose = np.array([0,0,7*np.pi/10,np.pi/2,-np.pi/3,  21*np.pi/20,np.pi/20,-2*np.pi/5], dtype=np.float32)
 
-	base_frames = [contact_pose, down_pose, passing_pose, up_pose, rcontact_pose,
-					 rdown_pose, rpassing_pose, rup_pose, contact_pose]
+	base_frames = [rest_pose, contact_pose, down_pose, passing_pose, up_pose, rcontact_pose,
+					 rdown_pose, rpassing_pose, rup_pose, contact_pose, rest_pose]
 
 
 	new_frames = interpolate_frames(base_frames, dt)
 	vel_frames = interpolate_velocities(new_frames, dt)
+
 	# this trajectory for all purposes is good enough
 	acc_frames = interpolate_acceleration(vel_frames, dt)
-	world.setQ(contact_pose)
+	# world.setQ(contact_pose)
+	# world.setQ(rup_pose)
+	world.setQ(rest_pose)
 
 	# world.setQ(passing_pose)
 	# world.setQ(np.array([0,0,np.pi-np.pi/8,0, np.pi/8, np.pi+np.pi/8,0, -np.pi/8], dtype=np.float32))
@@ -182,6 +188,7 @@ if __name__ == '__main__':
 	world.set_link_origin(origin)
 	world.set_gravity(g)
 	world.isCollision = True
+	world.friction = 2.0
 
 
 	t_list=[]
@@ -197,11 +204,11 @@ if __name__ == '__main__':
 	frame_rate = 1
 	fps = 20
 	frame_index = 0
+	global_frame_index = 0
 	torque_list = []
 	save_torque_value = True
 	while True:
 		# animate interpolated frames
-		world.setQ(new_frames[frame_index])
 		if 'torque_list.npy' in os.listdir('./'):
 			save_torque_value = False
 			torque_list = np.load('torque_list.npy')
@@ -210,16 +217,19 @@ if __name__ == '__main__':
 			# dqdt_diff_list.append(vel_frames[frame_index][2:] - world.dqdt[2:])
 
 		else:
-			torque_list = world.iadvect(vel_frames[frame_index][2:], dt, torque_list)
+			torque = world.iadvect(vel_frames[frame_index][2:], dt)
+			torque_list.append(torque)
 		frame_index = (frame_index+1) % len(new_frames)
+		global_frame_index = global_frame_index+1
 		world.update()
 
 		# debug statemetns
 		# t_list.append(world.t)
 		# e_list.append(energy)
+		# world.render(global_frame_index)
 		world.render()
 
-		if world.t>5:
+		if world.t>3:
 			if save_torque_value:
 				np.save('torque_list.npy', np.array(torque_list))
 			break
@@ -240,10 +250,6 @@ exit()
 
 # ####### TRASH CODE ###############
 
-if on_ground:
-	on_ground = world.advect(torque, dt/4)
-else:
-	on_ground = world.advect(torque, dt)
 
 # # animate world with constant poses
 # if switch == 0: 

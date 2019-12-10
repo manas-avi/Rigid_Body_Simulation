@@ -1,4 +1,5 @@
 archive/
+imgs/
+videos/
 __pycache__/
-pybullet/
 *.npy

@@ -488,6 +488,7 @@ class World(object):
 		plt.ion()
 		self.fig = plt.figure()
 		self.ax = plt.gca(projection="3d")
+		self.ax.view_init(0, -90)
 		self.ax.set_xlim(0,15)
 		self.ax.set_ylim(0,15)
 		self.ax.set_zlim(0,15)
@@ -530,7 +531,7 @@ class World(object):
 		for i in range(n):
 			self.obj_list[i].setDq(self.dqdt[i])
 
-	def iadvect(self, qdot_des, dt, torque_list):
+	def iadvect(self, qdot_des, dt):
 		on_ground = False
 		obj_list = self.obj_list
 		n = len(obj_list)
@@ -546,7 +547,6 @@ class World(object):
 		phi = evaluate_potential_energy_derivative(obj_list, self.gravity)
 		# create phi array as derivative of pe with qi's
 		Dq_derivative = evaluate_Dq_derivative(obj_list) # its is matrix of shape - nXnXn
-		# C = createCArray(Dq_derivative, dqdt)
 		C = createCArray(Dq_derivative, dqdt)
 
 		tau_star = Dq@dqdt - dt*(C + phi)
@@ -625,7 +625,6 @@ class World(object):
 				lcp_q2 = np.transpose(B_lcp) @ np.linalg.inv(Dq) @ tau_star + \
 						np.transpose(B_lcp) @ np.linalg.inv(Dq) @ np.transpose(P) @ ( X@qdot_des - Y@tau_star )
 				lcp_q3 = np.zeros((p,1))
-				# other friction terms will also come for now ignoring
 				dim = 2*p + p*d
 				lcp_A = np.zeros((dim,dim))
 				lcp_A[0:p,0:p] = lcp_A11
@@ -645,15 +644,16 @@ class World(object):
 				lcp_q[p:p+p*d] = np.reshape(lcp_q2, (p*d,1))
 				lcp_q[p+p*d:2*p+p*d] = np.reshape(lcp_q3, (p,1))
 
-				# pdb.set_trace()
+				# if self.t > 2:
+				# 	pdb.set_trace()
 				sol = lcp.lemkelcp(lcp_A,lcp_q)
 
 				print(sol[2])
+				print(sol[0])
 				if sol[2] == 'Solution Found':
 					fn = sol[0][0:p] * (1+coef_rest)
 					fd = sol[0][p:p+p*d]
 					f_external = dt*(N_lcp @ fn + B_lcp@fd)
-					print(f_external)
 					# pdb.set_trace()
 				elif sol[2] == 'Secondary ray found':
 					# it is the detaching case where there is contact but the collision is moving apart
@@ -683,7 +683,6 @@ class World(object):
 		torque = (P @ Dq @ v_final - P @ tau_star) / dt
 
 		actual_torque = np.transpose(P) @ torque
-		torque_list.append(actual_torque)
 		dqdt = v_final
 		q += dqdt*dt
 
@@ -693,17 +692,18 @@ class World(object):
 		t = self.t
 		self.t += dt
 
+		print('id loop')
 		print("t: ", np.array([t]), "torque : ",actual_torque)
 		print("t: ", np.array([t]), "dqdt : ", dqdt)
 		self.update()
 		print("t: ", np.array([t]), "q : ", q)
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
-		# print("t: ", np.array([t]), "Phi : ", phi)
-		# print("t: ", np.array([t]), "C : ", C)
+		print("t: ", np.array([t]), "C : ", C)
+		print("t: ", np.array([t]), "Phi : ", phi)
 		# print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
 		print()
 
-		return torque_list
+		return actual_torque
 
 	def advect(self, torque, dt):
 		on_ground = False
@@ -834,13 +834,14 @@ class World(object):
 		t = self.t
 		self.t += dt
 
+		print('fd loop')
 		print("t: ", np.array([t]), "torque : ", torque)
 		print("t: ", np.array([t]), "dqdt : ", dqdt)
 		self.update()
 		print("t: ", np.array([t]), "q : ", q)
-		# print("t: ", np.array([t]), "C : ", C)	
-		# print("t: ", np.array([t]), "Phi : ", phi)
 		print("t: ", np.array([t]), "energy : ", np.array([ke+pe]))
+		print("t: ", np.array([t]), "C : ", C)	
+		print("t: ", np.array([t]), "Phi : ", phi)
 		# print("t: ", np.array([t]), " Dq : ", '\n',  Dq)
 		# print("t: ", np.array([t]), "Dq_2 : \n", Dq_derivative[:,:,2])	
 		# print("t: ", np.array([t]), "Dq_4 : \n", Dq_derivative[:,:,4])	
@@ -886,7 +887,7 @@ class World(object):
 		axis_x, axis_y, axis_z = np.array([[1,0,0],[0,1,0],[0,0,1]])
 		self.update_axis(obj, axis_x, axis_y, axis_z)
 
-	def render(self):
+	def render(self, index=None):
 		n = len(self.obj_list)
 		# render objects
 		for artist in plt.gca().lines + plt.gca().collections + plt.gca().texts:
@@ -935,5 +936,8 @@ class World(object):
 		axis_u, axis_v, axis_w = np.array([[axis_length*1,0,0],[0,axis_length*1,0],[0,0,axis_length*1]])
 		self.ax.quiver(axis_x,axis_y,axis_z,axis_u,axis_v,axis_w,arrow_length_ratio=0.1)
 
-		self.fig.canvas.draw()
-		self.fig.canvas.flush_events()
+		if not index is None: 
+			self.fig.savefig('imgs/' + str(index))
+		else:
+			self.fig.canvas.draw()
+			self.fig.canvas.flush_events()
