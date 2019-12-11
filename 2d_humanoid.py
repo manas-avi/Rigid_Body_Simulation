@@ -107,22 +107,8 @@ n = len(obj_list)
 # I have kept these axes as I want my initial axes to behave in this manner
 # Remember super important how you intialize your axes
 # axis_x, axis_y, axis_z = np.array([[1,0,0],[0,1,0],[0,0,1]])
-axis_x, axis_y, axis_z = np.array([[1,0,0],[0,1,0],[0,0,1]])
-for i in range(0,n):
-	matrix = obj_list[i].get_transformation_matrix()[0:3,0:3]
-	axis_x = matrix @ axis_x
-	axis_y = matrix @ axis_y
-	axis_z = matrix @ axis_z
-	obj_list[i].set_xaxis(axis_x)
-	obj_list[i].set_yaxis(axis_y)
-	obj_list[i].set_zaxis(axis_z)
 
 torque = np.zeros((n,))
-
-# set indices 
-for i in range(n):
-	obj_list[i].setIndex(i)
-
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
@@ -234,7 +220,7 @@ if __name__ == '__main__':
 		# world.render(global_frame_index)
 		world.render()
 
-		if world.t>3:
+		if world.t>15:
 			if save_torque_value:
 				np.save('torque_list.npy', np.array(torque_list))
 			break

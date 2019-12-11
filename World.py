@@ -482,6 +482,20 @@ class World(object):
 	"""docstring for World"""
 	def __init__(self, obj_list):
 		super(World, self).__init__()
+
+		n = len(obj_list)
+		axis_x, axis_y, axis_z = np.array([[1,0,0],[0,1,0],[0,0,1]])
+		for i in range(0,n):
+			matrix = obj_list[i].get_transformation_matrix()[0:3,0:3]
+			axis_x = matrix @ axis_x
+			axis_y = matrix @ axis_y
+			axis_z = matrix @ axis_z
+			obj_list[i].set_xaxis(axis_x)
+			obj_list[i].set_yaxis(axis_y)
+			obj_list[i].set_zaxis(axis_z)
+		# set indices 
+		for i in range(n):
+			obj_list[i].setIndex(i)
 		self.obj_list = obj_list
 		# rendering options
 		np.set_printoptions(precision=4)
@@ -494,7 +508,6 @@ class World(object):
 		self.ax.set_zlim(0,15)
 		self.fig.canvas.mpl_connect("close_event", lambda event: exit())
 		self.origin = np.array([0,0,0,1])
-		n = len(obj_list)
 		self.q = np.zeros((n))
 		self.dqdt = np.zeros((n))
 		self.d2qdt2 = np.zeros((n))
